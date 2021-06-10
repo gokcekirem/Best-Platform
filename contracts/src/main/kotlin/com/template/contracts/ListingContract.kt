@@ -66,7 +66,7 @@ class ListingContract : Contract{
         for(listing in listings){
             // Requirements
             requireThat{
-                "Electricity type is incompatible with the listing type. It should be set to >= 0".using(listing.electricityType >= -1)
+                "Electricity type is incompatible with the listing type. It should be set to >= 0".using(listing.electricityType >= 0)
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
                 //TODO Market time check, price upperbound check, sender check, matching node check
