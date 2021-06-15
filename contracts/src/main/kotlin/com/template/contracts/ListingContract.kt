@@ -1,7 +1,6 @@
 package com.template.contracts
 
 import com.template.states.ListingState
-import com.template.states.TemplateState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
 import net.corda.core.contracts.requireSingleCommand
