@@ -12,10 +12,15 @@ import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 //import java.util.*
 
-object UpdateMarketTimeFlow {
+
+/**
+ * Market Clearing (t1) Initiator Flow
+ */
+
+object ClearMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
-    class Initiator(val marketTime: Int,
+    class Initiator(val globalCounter: Int,
                     val otherParty: Party) : FlowLogic<SignedTransaction>() { // Could also be private?
         /**
          * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -58,7 +63,7 @@ object UpdateMarketTimeFlow {
             progressTracker.currentStep = GENERATINGTRANSACTION
             // Generate an unsigned transaction.
 
-            val marketTimeState = MarketTimeState(marketTime, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val marketTimeState = MarketTimeState(globalCounter,2, serviceHub.myInfo.legalIdentities.first(), otherParty)
             val txCommand = Command(MarketTimeContract.Commands.InitiateMarketTime(),marketTimeState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
                 .addOutputState(marketTimeState, MarketTimeContract.ID)
@@ -95,16 +100,15 @@ object UpdateMarketTimeFlow {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
 
                     val output = stx.tx.outputs.single().data
-                    "This must be an MarketTime Update transaction." using (output is MarketTimeState)
+                    "This must be an MarketTime transaction." using (output is MarketTimeState)
 
-                    /**
-                    * val marketT = output as MarketTimeState
-                    * "MarketTime value must be greater than 0." using (marketT.marketTime > 0)
-                    **/
+                    val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
+                    "The MarketTime value in the previous (input) state must be equal to 1." using (inputmarketT.marketTime == 1 )
 
                     val marketT = output as MarketTimeState
-                    val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
-                    "The MarketTime value in the previous (input) state must be lower than the new MarketTime" using (inputmarketT.marketTime < marketT.marketTime )
+                    "MarketTime value after Market Clearing must be equal to 2." using(marketT.marketTime == 2)
+                    //A MarketTime Value other than 2 should not be possible since this is the market clearing flow
+
                 }
             }
             val txId = subFlow(signTransactionFlow).id

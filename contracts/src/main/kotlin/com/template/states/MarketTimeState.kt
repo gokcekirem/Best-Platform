@@ -21,8 +21,11 @@ import net.corda.core.identity.Party
 
 @BelongsToContract(MarketTimeContract::class)
 class MarketTimeState (
+    val globalCounter: Int,
     val marketTime: Int,
     val sender: Party,
     val receiver: Party,
     override val participants: List<AbstractParty> = listOf(sender, receiver)
+
+
 ) : ContractState

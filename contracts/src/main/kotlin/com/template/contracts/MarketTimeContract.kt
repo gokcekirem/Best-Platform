@@ -26,7 +26,10 @@ class MarketTimeContract : Contract {
             is MarketTimeContract.Commands.InitiateMarketTime -> {
                 verifyMarketTime(outputs)
             }
-            is MarketTimeContract.Commands.UpdateMarketTime -> {
+            is MarketTimeContract.Commands.ClearMarketTime -> {
+                verifyMarketTime(outputs)
+            }
+            is MarketTimeContract.Commands.ResetMarketTime -> {
                 verifyMarketTime(outputs)
             }
             else -> {
@@ -40,17 +43,24 @@ class MarketTimeContract : Contract {
         // in case somebody tries to create modified transactions the system should be able to handle all of them
         for(marketTime in marketTimes) {
             requireThat {
-                "Market Time must be positive".using(marketTime.marketTime > 0)
+                "marketTime value must be an Integer" using(marketTime.marketTime is Int)
+
+                "marketTime value must be greater than or equal to 0" using(marketTime.marketTime >= 0)
+
+                "marketTime value must be lower than 3." using(marketTime.marketTime <3)
+
+                "globalCounter value must be non-negative" using(marketTime.globalCounter > 0)
             }
         }
     }
 
     // Commands are used to determine the type of the listing.
-    // -IniateMarketTime: initialization after the creation of Market Time object
+    // -InitiateMarketTime: initialization after the creation of Market Time object
     // -UpdateMarketTime: updating the marketing time after its creation
     interface Commands : CommandData {
         class InitiateMarketTime : Commands {}
-        class UpdateMarketTime : Commands {}
+        class ClearMarketTime : Commands {}
+        class ResetMarketTime : Commands {}
     }
 }
 
