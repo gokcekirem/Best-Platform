@@ -94,10 +94,13 @@ class ListingFlowInitiator(private val electricityType: Int,
 class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
+        // 1.Step: Check if we are a matching node
+        val isMatchingNode: Boolean =  if (ourIdentity.name.toString() != null) ourIdentity.name.toString().contains("Matching", ignoreCase = true) else false
+
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                //TODO: Here we need to verify that this note is the matching node
                 //TODO: Also can we just call contract to do sanity check or do we need to verify each field again
+                "This node is not authorized to perform matching".using(isMatchingNode)
             }
         }
         val txId = subFlow(signTransactionFlow).id
