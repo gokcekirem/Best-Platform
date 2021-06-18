@@ -50,6 +50,9 @@ class ListingFlowInitiator(private val electricityType: Int,
     override val progressTracker = ProgressTracker()
 
     override fun call(): SignedTransaction {
+
+        val producerListing : Int = 1
+        val consumerListing : Int = 2
         // 1.Step: Fetch our address
         val sender: Party = ourIdentity
 
@@ -59,15 +62,17 @@ class ListingFlowInitiator(private val electricityType: Int,
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
         // 3.Step: Create the transaction object
-        val listing = ListingState(electricityType, unitPrice, amount, sender, matcher, marketTime)
+        val listingType = if (transactionType == 1)  producerListing else consumerListing
+
+        val listing = ListingState(listingType, electricityType, unitPrice, amount, sender, matcher, marketTime)
         val listingBuilder = TransactionBuilder(notary)
 
         if(transactionType == 1){
             // Transaction is of type ProducerListing
-                listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
-        }else {
+            listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
+        } else {
             // Note that this else defaults any errors in transactionType to 0
-                listingBuilder.addCommand(ListingContract.Commands.ConsumerListing(), listOf(sender.owningKey, matcher.owningKey))
+            listingBuilder.addCommand(ListingContract.Commands.ConsumerListing(), listOf(sender.owningKey, matcher.owningKey))
         }
 
         listingBuilder.addOutputState(listing)
