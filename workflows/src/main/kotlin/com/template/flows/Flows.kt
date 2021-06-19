@@ -27,6 +27,7 @@ import net.corda.core.identity.AbstractParty
 // *********
 // * Flows *
 // *********
+// THIS FILE IS JUST A THEMPLATE DO NOT EXTEND THIS FILE ;)
 @InitiatingFlow
 @StartableByRPC
 class Initiator(private val receiver: Party) : FlowLogic<SignedTransaction>() {

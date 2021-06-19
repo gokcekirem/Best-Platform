@@ -7,6 +7,9 @@ import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
+import net.corda.core.node.services.Vault
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -15,7 +18,7 @@ import net.corda.core.utilities.ProgressTracker
 object ResetMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
-    class Initiator(val globalCounter: Int,
+    class Initiator(
                     val otherParty: Party) : FlowLogic<SignedTransaction>() { // Could also be private?
         /**
          * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
@@ -53,15 +56,31 @@ object ResetMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
+            // Query the vault to fetch a list of all MarketTimeState states, and get the last state (input State)
+            // to fetch the desired MarketTimeState state from the vault. This filtered state would be used as input to the
+            // transaction.
+
+            val queryCriteria = QueryCriteria.VaultQueryCriteria(
+                Vault.StateStatus.UNCONSUMED,
+                null,
+                null)
+
+            val marketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
+            val inputStateAndRef = marketTimeStateAndRefs.last()
+            val inputState = inputStateAndRef.state.data
+
+            val outputState = MarketTimeState(inputState.globalCounter+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
+
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
-            // Generate an unsigned transaction and increase the globalCounter by 1 in the output MarketTime state
 
-            val marketTimeState = MarketTimeState(globalCounter+1, 0, serviceHub.myInfo.legalIdentities.first(), otherParty)
-            val txCommand = Command(MarketTimeContract.Commands.InitiateMarketTime(),marketTimeState.participants.map { it.owningKey })
-            val txBuilder = TransactionBuilder(notary)
-                .addOutputState(marketTimeState, MarketTimeContract.ID)
+            // Generate an unsigned transaction.
+
+            val txCommand = Command(MarketTimeContract.Commands.ResetMarketTime(),outputState.participants.map { it.owningKey })
+            val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
+                .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
+
 
             // Stage 2.
             progressTracker.currentStep = VERIFYINGTRANSACTION
