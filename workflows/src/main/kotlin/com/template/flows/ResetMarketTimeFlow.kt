@@ -15,6 +15,10 @@ import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 //import java.util.*
 
+/**
+ * Market Reset (t2) Initiator Flow
+ */
+
 object ResetMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
@@ -113,7 +117,7 @@ object ResetMarketTimeFlow {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
 
                     val output = stx.tx.outputs.single().data
-                    "This must be an MarketTime transaction." using (output is MarketTimeState)
+                    //"This must be an MarketTime transaction." using (output is MarketTimeState)
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
                     "MarketTime value in the previous (Input) state must be equal to 2" using(inputmarketT.marketTime == 2)

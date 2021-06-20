@@ -119,7 +119,7 @@ object ClearMarketTimeFlow {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
 
                     val output = stx.tx.outputs.single().data
-                    "This must be an MarketTime transaction." using (output is MarketTimeState)
+                    //"This must be an MarketTime transaction." using (output is MarketTimeState)
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
                     "The MarketTime value in the previous (input) state must be equal to 1." using (inputmarketT.marketTime == 1 )

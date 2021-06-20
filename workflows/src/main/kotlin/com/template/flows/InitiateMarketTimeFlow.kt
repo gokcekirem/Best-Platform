@@ -118,7 +118,7 @@ object InitiateMarketTimeFlow {
             val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
                     val output = stx.tx.outputs.single().data
-                    "This must be an MarketTime transaction." using (output is MarketTimeState)
+                    //"This must be a MarketTime transaction." using (output is MarketTimeState)
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
                     "MarketTime value in the previous (Input) state must be equal to 0." using(inputmarketT.marketTime == 0)

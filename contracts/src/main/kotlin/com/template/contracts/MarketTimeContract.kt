@@ -20,8 +20,25 @@ class MarketTimeContract : Contract {
 
         // Step 2: Get the corresponding output state
         val outputs = tx.outputsOfType<MarketTimeState>()
+        val inputs = tx.inputsOfType<MarketTimeState>()
 
+        requireThat{
+
+            "There should only be a single input state" using(inputs.size == 1)
+
+            "There should only be a single output state" using(outputs.size == 1)
+        }
         // Step 3: Based on type of the command do verifications
+
+        when (command.value) {
+            is MarketTimeContract.Commands.InitiateMarketTime -> verifyMarketTime(outputs)
+            is MarketTimeContract.Commands.ClearMarketTime -> verifyMarketTime(outputs)
+            is MarketTimeContract.Commands.ResetMarketTime -> verifyMarketTime(outputs)
+            else -> {
+                throw IllegalArgumentException("Unknown command!")
+            }
+        }
+        /**
         when (command.value) {
             is MarketTimeContract.Commands.InitiateMarketTime -> {
                 verifyMarketTime(outputs)
@@ -36,6 +53,7 @@ class MarketTimeContract : Contract {
                 throw IllegalArgumentException("Unknown command!")
             }
         }
+        **/
     }
     // Helper function in order to verify Market Time
     private fun verifyMarketTime(marketTimes: List<MarketTimeState>) {
@@ -43,13 +61,14 @@ class MarketTimeContract : Contract {
         // in case somebody tries to create modified transactions the system should be able to handle all of them
         for(marketTime in marketTimes) {
             requireThat {
-                "marketTime value must be an Integer" using(marketTime.marketTime is Int)
+                //"marketTime value must be an Integer" using(marketTime.marketTime is Int)
 
                 "marketTime value must be greater than or equal to 0" using(marketTime.marketTime >= 0)
 
                 "marketTime value must be lower than 3." using(marketTime.marketTime <3)
 
                 "globalCounter value must be non-negative" using(marketTime.globalCounter > 0)
+
             }
         }
     }
