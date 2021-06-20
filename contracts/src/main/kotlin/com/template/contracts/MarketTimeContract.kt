@@ -31,9 +31,8 @@ class MarketTimeContract : Contract {
         // Step 3: Based on type of the command do verifications
 
         when (command.value) {
-            is MarketTimeContract.Commands.InitiateMarketTime -> verifyMarketTime(outputs)
-            is MarketTimeContract.Commands.ClearMarketTime -> verifyMarketTime(outputs)
-            is MarketTimeContract.Commands.ResetMarketTime -> verifyMarketTime(outputs)
+            is Commands.InitiateMarketTime, is Commands.ClearMarketTime, is Commands.ResetMarketTime ->
+                verifyMarketTime(outputs)
             else -> {
                 throw IllegalArgumentException("Unknown command!")
             }
