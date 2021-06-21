@@ -14,7 +14,7 @@ import net.corda.core.identity.Party
 // will be determined by the accompanying "command" (see the Listing Contract).
 //
 // params:
-//      listingType:        Type of Listing: ProducerListing (1) or ConsumerListing (2)
+//      listingType:        Type of Listing: ProducerListing  or ConsumerListing 
 //      electricityType:    Type of the electricity in the listing, will be set to -1 if they type of the listing
 //                          is "ConsumerListing". 0 -> Renewable, 1 -> Normal. More types can be added
 //      unitPrice:          Denotes the unit price belonging to this listing
@@ -28,7 +28,7 @@ import net.corda.core.identity.Party
 // *********
 @BelongsToContract(ListingContract::class)
 data class ListingState(
-    val listingType: Int,
+    val listingType: ListingTypes,
     val electricityType: Int,
     val unitPrice: Int,
     val amount: Int,
@@ -37,3 +37,7 @@ data class ListingState(
     val marketTime: Int,
     override val participants: List<AbstractParty> = listOf(sender, matcher)
 ) : ContractState
+
+enum class ListingTypes {
+    ProducerListing, ConsumerListing
+}

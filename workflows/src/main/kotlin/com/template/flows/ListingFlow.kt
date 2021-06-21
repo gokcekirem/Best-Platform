@@ -20,6 +20,7 @@ import com.template.contracts.ListingContract
 import net.corda.core.transactions.TransactionBuilder
 
 import com.template.states.ListingState
+import com.template.states.ListingTypes
 import net.corda.core.contracts.requireThat
 import net.corda.core.identity.AbstractParty
 
@@ -51,8 +52,6 @@ class ListingFlowInitiator(private val electricityType: Int,
 
     override fun call(): SignedTransaction {
 
-        val producerListing : Int = 1
-        val consumerListing : Int = 2
         // 1.Step: Fetch our address
         val sender: Party = ourIdentity
 
@@ -62,7 +61,7 @@ class ListingFlowInitiator(private val electricityType: Int,
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
         // 3.Step: Create the transaction object
-        val listingType = if (transactionType == 1)  producerListing else consumerListing
+        val listingType = if (transactionType == 1)  ListingTypes.ProducerListing else ListingTypes.ConsumerListing
 
         val listing = ListingState(listingType, electricityType, unitPrice, amount, sender, matcher, marketTime)
         val listingBuilder = TransactionBuilder(notary)
