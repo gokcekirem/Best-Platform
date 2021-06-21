@@ -46,6 +46,7 @@ object MatchingFlow {
         @Suspendable
         override fun call(): Collection<SignedTransaction> {
             progressTracker.currentStep = SEARCHING_STATES
+            // TODO Maybe check for the current market time, in case matching with retailer does not work
             val listingStates = serviceHub.vaultService.queryBy<ListingState>(
                 QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
             )
@@ -53,8 +54,6 @@ object MatchingFlow {
                 .map {
                     it.state.data
                 }
-            // TODO Get type numbers from global variables
-            // TODO Merge MatchingContract branch first
             val producerStates = listingStates.filter { it.listingType == ListingTypes.ProducerListing }
             val consumerStates = listingStates.filter { it.listingType == ListingTypes.ConsumerListing }
 
@@ -63,6 +62,7 @@ object MatchingFlow {
             val consumerEnergySum = consumerStates.map { it.amount }.sum()
             val producerEnergySum = producerStates.map { it.amount }.sum()
             val participatingProducerStates: List<ListingState>
+            // Calculate the Merit Order Price
             val unitPrice = if (consumerEnergySum > producerEnergySum) {
                 producerStates.map { it.unitPrice }.max()
             } else {
@@ -76,7 +76,10 @@ object MatchingFlow {
 
             progressTracker.currentStep = GENERATING_MATCHINGS
 
-            // TODO Who is mapped to whom?
+            // TODO Retailer has same unit price as the rest of the producers and consumers
+            // TODO Split up the state conceptually into unit states for matching
+            // TODO Split up the states via a split flow during the matching
+            // TODO Randomly map the producers to the consumers
             if (consumerEnergySum > producerEnergySum) {
                 // TODO Create new ProducerListings with the retailer
 
