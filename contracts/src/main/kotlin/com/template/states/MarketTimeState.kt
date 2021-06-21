@@ -28,6 +28,4 @@ class MarketTimeState (
     val receiver: Party,
     override val linearId: UniqueIdentifier = UniqueIdentifier(), //All MarketTime states share the common ID
     override val participants: List<AbstractParty> = listOf(sender, receiver)
-
-
 ) : LinearState

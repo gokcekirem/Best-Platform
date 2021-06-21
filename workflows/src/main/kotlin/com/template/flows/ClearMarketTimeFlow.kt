@@ -117,14 +117,12 @@ object ClearMarketTimeFlow {
         override fun call(): SignedTransaction {
             val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
-
-                    val output = stx.tx.outputs.single().data
-                    //"This must be an MarketTime transaction." using (output is MarketTimeState)
+                    val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
                     "The MarketTime value in the previous (input) state must be equal to 1." using (inputmarketT.marketTime == 1 )
 
-                    val marketT = output as MarketTimeState
+                    val marketT = output
                     "MarketTime value after Market Clearing must be equal to 2." using(marketT.marketTime == 2)
                     //A MarketTime Value other than 2 should not be possible since this is the market clearing flow
 
