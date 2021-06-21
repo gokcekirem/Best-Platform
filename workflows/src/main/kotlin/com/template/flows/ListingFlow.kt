@@ -47,7 +47,7 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val amount: Int,
                            private val matcher: Party,
                            private val marketTime: Int,
-                           private val transactionType: Int): FlowLogic<SignedTransaction>() {
+                           private val transactionType: ListingTypes): FlowLogic<SignedTransaction>() {
     override val progressTracker = ProgressTracker()
 
     override fun call(): SignedTransaction {
@@ -59,14 +59,11 @@ class ListingFlowInitiator(private val electricityType: Int,
         // Note: ongoing work to support multiple notary identities is still in progress.
         // TODO : Look for a more elegant way
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
-
-        // 3.Step: Create the transaction object
-        val listingType = if (transactionType == 1)  ListingTypes.ProducerListing else ListingTypes.ConsumerListing
-
-        val listing = ListingState(listingType, electricityType, unitPrice, amount, sender, matcher, marketTime)
+        
+        val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketTime)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(transactionType == 1){
+        if(transactionType == ListingTypes.ProducerListing){
             // Transaction is of type ProducerListing
             listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
         } else {
