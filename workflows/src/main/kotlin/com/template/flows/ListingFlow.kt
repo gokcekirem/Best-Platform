@@ -20,6 +20,7 @@ import com.template.contracts.ListingContract
 import net.corda.core.transactions.TransactionBuilder
 
 import com.template.states.ListingState
+import com.template.states.ListingTypes
 import net.corda.core.contracts.requireThat
 import net.corda.core.identity.AbstractParty
 
@@ -46,10 +47,11 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val amount: Int,
                            private val matcher: Party,
                            private val marketTime: Int,
-                           private val transactionType: Int): FlowLogic<SignedTransaction>() {
+                           private val transactionType: ListingTypes): FlowLogic<SignedTransaction>() {
     override val progressTracker = ProgressTracker()
 
     override fun call(): SignedTransaction {
+
         // 1.Step: Fetch our address
         val sender: Party = ourIdentity
 
@@ -57,17 +59,16 @@ class ListingFlowInitiator(private val electricityType: Int,
         // Note: ongoing work to support multiple notary identities is still in progress.
         // TODO : Look for a more elegant way
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
-
-        // 3.Step: Create the transaction object
-        val listing = ListingState(electricityType, unitPrice, amount, sender, matcher, marketTime)
+        
+        val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketTime)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(transactionType == 1){
+        if(transactionType == ListingTypes.ProducerListing){
             // Transaction is of type ProducerListing
-                listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
-        }else {
+            listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
+        } else {
             // Note that this else defaults any errors in transactionType to 0
-                listingBuilder.addCommand(ListingContract.Commands.ConsumerListing(), listOf(sender.owningKey, matcher.owningKey))
+            listingBuilder.addCommand(ListingContract.Commands.ConsumerListing(), listOf(sender.owningKey, matcher.owningKey))
         }
 
         listingBuilder.addOutputState(listing)
