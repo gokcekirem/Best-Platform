@@ -1,6 +1,7 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import com.template.flows.ListingFlowInitiator
 import com.template.states.ListingState
 import com.template.states.ListingTypes
 import net.corda.core.contracts.StateAndRef
@@ -102,18 +103,18 @@ object MatchingFlow {
             // TODO Split up the states via a split flow during the matching
             // TODO Randomly map the producers to the consumers
 
-            var consumerStateIterator : Int = 0
+            var consumerStateIterator = 0
             var producerStateIterator = 0
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
             val unMatchedListings = MatchListings(unitPrice!!, producersStateAndRefs, consumersStateAndRefs, producerStateIterator, consumerStateIterator, SPLITING_STATE_FLOW.childProgressTracker())
 
-            if (consumerEnergySum > producerEnergySum) {
-                // TODO Create new ProducerListings with the retailer
-
-            } else {
-                // TODO Create new ConsumerListing with the retailer
+            // Create matches with the retailer
+            if(unMatchedListings.listings.isNotEmpty()){
+                for(i in unMatchedListings.currentIterator until unMatchedListings.listings.size){
+                    MatchWithRetailer(unMatchedListings.listings[i], unitPrice)
+                }
             }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS
@@ -157,9 +158,6 @@ object MatchingFlow {
             val pAmount = producerStates[producerStateIterator].state.data.amount
             val cAmount = consumerStates[consumerStateIterator].state.data.amount
 
-//            val pListing = StateAndRef(TransactionState(producerStates[producerStateIterator], notary = notary), StateRef(producerStates[producerStateIterator].hash(), 0))
-//            val cListing = StateAndRef(TransactionState(consumerStates[consumerStateIterator], notary = notary), StateRef(consumerStates[consumerStateIterator].hash(), 0))
-
             if (pAmount == cAmount){
                 match = Matching(unitPrice, pAmount, pListing, cListing)
                 matchings.add(match)
@@ -202,11 +200,11 @@ object MatchingFlow {
                 val cReqListing = ledgerTx.single { it.amount == pAmount }
                 val cRemListing = ledgerTx.single { it.amount == remainderAmount }
 
-                // Create and add match to matchings list
-                match = Matching(unitPrice, pAmount, StateAndRef(TransactionState(cReqListing, notary = notary), StateRef(cReqListing.hash(), 0)), pListing)
+                // Create and add match to matching list
+                match = Matching(unitPrice, pAmount, pListing, StateAndRef(TransactionState(cReqListing, notary = notary), StateRef(cReqListing.hash(), 0)))
                 matchings.add(match)
 
-                var updatedConsumerStates = producerStates.toMutableList()
+                var updatedConsumerStates = consumerStates.toMutableList()
                 // Add left over energy state to the consumers list
                 // maybe another elegant solution?
                 updatedConsumerStates.add(index = consumerStateIterator + 1, element = StateAndRef(TransactionState(cRemListing, notary = notary), StateRef(cRemListing.hash(), 0)))
@@ -214,6 +212,40 @@ object MatchingFlow {
 
             }
             return UnMatchedListings(emptyList(), 0)
+        }
+
+        private fun MatchWithRetailer(listingStateAndRef : StateAndRef<ListingState>, unitPrice: Int){
+//            val listingType = unMatchedListings.listings.first<StateAndRef<ListingState>>().state.data.listingType
+            val listingState = listingStateAndRef.state.data
+            val match: Matching
+            val retailerSignedTx: SignedTransaction
+            if(listingState.listingType == ListingTypes.ProducerListing){
+                retailerSignedTx = subFlow(ListingFlowInitiator(
+                    listingState.electricityType,
+                    unitPrice,
+                    listingState.amount,
+                    ourIdentity,
+                    0,
+                    ListingTypes.ConsumerListing)
+                )
+                val retailerState = retailerSignedTx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>().first()
+                val retailerStateAndRef = StateAndRef(TransactionState(retailerState, notary = notary),  StateRef(retailerState.hash(), 0))
+                match = Matching(unitPrice, listingState.amount, listingStateAndRef, retailerStateAndRef)
+            } else{
+                retailerSignedTx = subFlow(ListingFlowInitiator(
+                    listingState.electricityType,
+                    unitPrice,
+                    listingState.amount,
+                    ourIdentity,
+                    0,
+                    ListingTypes.ProducerListing)
+                )
+                val retailerState = retailerSignedTx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>().first()
+                val retailerStateAndRef = StateAndRef(TransactionState(retailerState, notary = notary),  StateRef(retailerState.hash(), 0))
+                match = Matching(unitPrice, listingState.amount, retailerStateAndRef, listingStateAndRef)
+            }
+
+            matchings.add(match)
         }
 
     }
