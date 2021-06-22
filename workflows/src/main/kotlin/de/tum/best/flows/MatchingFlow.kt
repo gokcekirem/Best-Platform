@@ -23,6 +23,11 @@ object MatchingFlow {
         val consumerStateAndRef: StateAndRef<ListingState>
     )
 
+    data class UnMatchedListings(
+        val listings: List<StateAndRef<ListingState>>,
+        val currentIterator: Int
+    )
+
     @InitiatingFlow
     @StartableByRPC
     class Initiator() : FlowLogic<Collection<SignedTransaction>>() {
@@ -100,7 +105,9 @@ object MatchingFlow {
             var consumerStateIterator : Int = 0
             var producerStateIterator = 0
 
-            MatchListings(unitPrice!!, producersStateAndRefs, consumersStateAndRefs, producerStateIterator, consumerStateIterator, SPLITING_STATE_FLOW.childProgressTracker())
+            // Creates matches from client listings and adds them to the global matchings hashset
+            // Returns un matched listings that should be matched to the retailer
+            val unMatchedListings = MatchListings(unitPrice!!, producersStateAndRefs, consumersStateAndRefs, producerStateIterator, consumerStateIterator, SPLITING_STATE_FLOW.childProgressTracker())
 
             if (consumerEnergySum > producerEnergySum) {
                 // TODO Create new ProducerListings with the retailer
@@ -123,9 +130,24 @@ object MatchingFlow {
             }
         }
 
-        private fun MatchListings(unitPrice:Int, producerStates: List<StateAndRef<ListingState>>, consumerStates: List<StateAndRef<ListingState>>, producerStateIterator: Int, consumerStateIterator: Int, progressTracker: ProgressTracker){
-            if(producerStateIterator <= producerStates.size || consumerStateIterator <= consumerStates.size){
-                return 
+        private fun MatchListings(
+            unitPrice:Int,
+            producerStates: List<StateAndRef<ListingState>>,
+            consumerStates: List<StateAndRef<ListingState>>,
+            producerStateIterator: Int,
+            consumerStateIterator: Int,
+            progressTracker: ProgressTracker) : UnMatchedListings
+        {
+            //could possibly have 1 iterator with the current approach
+
+            if(producerStateIterator == producerStates.size || consumerStateIterator == consumerStates.size){
+                if (producerStates.size > producerStateIterator) {
+                    return UnMatchedListings(producerStates, producerStateIterator)
+                } else if (consumerStates.size > consumerStateIterator){
+                    return UnMatchedListings(consumerStates, consumerStateIterator)
+                } else {
+                    return UnMatchedListings(emptyList(), 0)
+                }
             }
 
             var match : Matching
@@ -162,6 +184,7 @@ object MatchingFlow {
 
                 var updatedProducerStates = producerStates.toMutableList()
                 // Add left over energy state to the producers list
+                // maybe another elegant solution?
                 updatedProducerStates.add(index = producerStateIterator + 1, element = StateAndRef(TransactionState(pRemListing, notary = notary), StateRef(pRemListing.hash(), 0)))
                 MatchListings(unitPrice!!, updatedProducerStates, consumerStates, producerStateIterator + 1, consumerStateIterator+1, progressTracker)
 
@@ -184,11 +207,13 @@ object MatchingFlow {
                 matchings.add(match)
 
                 var updatedConsumerStates = producerStates.toMutableList()
-                // Add left over energy state to the producers list
+                // Add left over energy state to the consumers list
+                // maybe another elegant solution?
                 updatedConsumerStates.add(index = consumerStateIterator + 1, element = StateAndRef(TransactionState(cRemListing, notary = notary), StateRef(cRemListing.hash(), 0)))
                 MatchListings(unitPrice!!, producerStates, updatedConsumerStates, producerStateIterator + 1, consumerStateIterator+1, progressTracker)
 
             }
+            return UnMatchedListings(emptyList(), 0)
         }
 
     }
