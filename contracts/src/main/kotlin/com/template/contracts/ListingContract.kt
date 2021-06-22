@@ -81,5 +81,6 @@ class ListingContract : Contract{
     interface Commands : CommandData {
         class ConsumerListing : Commands {}
         class ProducerListing : Commands {}
+        class SplitTx : Commands {}
     }
 }
