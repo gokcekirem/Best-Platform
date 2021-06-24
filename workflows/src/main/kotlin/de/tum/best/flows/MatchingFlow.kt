@@ -81,6 +81,7 @@ object MatchingFlow {
             // Calculate the Merit Order Price
             val unitPrice = if (consumerEnergySum > producerEnergySum) {
                 producerStates.map { it.unitPrice }.max()
+                    ?: throw IllegalArgumentException("The producer state list should not be empty")
             } else {
                 val sortedProducerStates = producerStates.sortedBy { it.unitPrice }
                 val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
@@ -92,15 +93,10 @@ object MatchingFlow {
 
             progressTracker.currentStep = SPLITTING_STATE_FLOW
 
-            // TODO Retailer has same unit price as the rest of the producers and consumers
-            // TODO Split up the state conceptually into unit states for matching
-            // TODO Split up the states via a split flow during the matching
-            // TODO Randomly map the producers to the consumers
-
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
             val unmatchedListings = matchListings(
-                unitPrice!!,
+                unitPrice,
                 producersStateAndRefs.toMutableList(),
                 consumersStateAndRefs.toMutableList(),
                 SPLITTING_STATE_FLOW.childProgressTracker()
