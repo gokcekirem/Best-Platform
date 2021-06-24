@@ -7,7 +7,6 @@ import com.template.states.ListingTypes
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.TransactionState
-import net.corda.core.contracts.hash
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
@@ -192,17 +191,16 @@ object MatchingFlow {
                     )
                 )
                 // Get the 2 newly created states
-                val ledgerTx = stx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>()
-                val producerRequiredListing = ledgerTx.single { it.amount == consumerAmount }
-                val producerRemainingListing = ledgerTx.single { it.amount == remainderAmount }
+                val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
+                val producerRequiredListingStateAndRef =
+                    splitListingsStateAndRef.single { it.state.data.amount == consumerAmount }
+                val producerRemainingListingStateAndRef =
+                    splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
 
                 match = Matching(
                     unitPrice,
                     consumerAmount,
-                    StateAndRef(
-                        TransactionState(producerRequiredListing, notary = notary),
-                        StateRef(producerRequiredListing.hash(), 0)
-                    ),
+                    producerRequiredListingStateAndRef,
                     consumerListing
                 )
                 matchings.add(match)
@@ -212,10 +210,7 @@ object MatchingFlow {
                 // maybe another elegant solution?
                 updatedProducerStates.add(
                     index = producerStateIterator + 1,
-                    element = StateAndRef(
-                        TransactionState(producerRemainingListing, notary = notary),
-                        StateRef(producerRemainingListing.hash(), 0)
-                    )
+                    element = producerRemainingListingStateAndRef
                 )
                 matchListings(
                     unitPrice,
@@ -238,19 +233,18 @@ object MatchingFlow {
                     )
                 )
                 // Get the 2 newly created states
-                val ledgerTx = stx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>()
-                val consumerRequiredListing = ledgerTx.single { it.amount == producerAmount }
-                val consumerRemainingListing = ledgerTx.single { it.amount == remainderAmount }
+                val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
+                val consumerRequiredListingStateAndRef =
+                    splitListingsStateAndRef.single { it.state.data.amount == producerAmount }
+                val consumerRemainingListingStateAndRef =
+                    splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
 
                 // Create and add match to matching list
                 match = Matching(
                     unitPrice,
                     producerAmount,
                     producerListing,
-                    StateAndRef(
-                        TransactionState(consumerRequiredListing, notary = notary),
-                        StateRef(consumerRequiredListing.hash(), 0)
-                    )
+                    consumerRequiredListingStateAndRef
                 )
                 matchings.add(match)
 
@@ -259,10 +253,7 @@ object MatchingFlow {
                 // maybe another elegant solution?
                 updatedConsumerStates.add(
                     index = consumerStateIterator + 1,
-                    element = StateAndRef(
-                        TransactionState(consumerRemainingListing, notary = notary),
-                        StateRef(consumerRemainingListing.hash(), 0)
-                    )
+                    element = consumerRemainingListingStateAndRef
                 )
                 matchListings(
                     unitPrice,
@@ -292,10 +283,8 @@ object MatchingFlow {
                         ListingTypes.ConsumerListing
                     )
                 )
-                val retailerState =
-                    retailerSignedTx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>().first()
                 val retailerStateAndRef =
-                    StateAndRef(TransactionState(retailerState, notary = notary), StateRef(retailerState.hash(), 0))
+                    retailerSignedTx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>().first()
                 match = Matching(unitPrice, listingState.amount, listingStateAndRef, retailerStateAndRef)
             } else {
                 retailerSignedTx = subFlow(
@@ -308,10 +297,8 @@ object MatchingFlow {
                         ListingTypes.ProducerListing
                     )
                 )
-                val retailerState =
-                    retailerSignedTx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>().first()
                 val retailerStateAndRef =
-                    StateAndRef(TransactionState(retailerState, notary = notary), StateRef(retailerState.hash(), 0))
+                    retailerSignedTx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>().first()
                 match = Matching(unitPrice, listingState.amount, retailerStateAndRef, listingStateAndRef)
             }
 
