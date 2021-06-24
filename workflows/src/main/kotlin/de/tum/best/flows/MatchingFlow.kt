@@ -52,8 +52,6 @@ object MatchingFlow {
 
         @Suspendable
         override fun call(): Collection<SignedTransaction> {
-
-
             progressTracker.currentStep = SEARCHING_STATES
             // TODO Maybe check for the current market time, in case matching with retailer does not work
             val listingStateAndRefs = serviceHub.vaultService.queryBy<ListingState>(
@@ -95,17 +93,16 @@ object MatchingFlow {
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
-            val unmatchedListings = matchListings(
+            matchListings(
                 unitPrice,
                 producersStateAndRefs.toMutableList(),
                 consumersStateAndRefs.toMutableList(),
                 SPLITTING_STATE_FLOW.childProgressTracker()
             )
-
-            // Create matches with the retailer
-            unmatchedListings.forEach { unmatchedListing ->
-                matchWithRetailer(unmatchedListing, unitPrice)
-            }
+                // Create matches with the retailer
+                .forEach { unmatchedListing ->
+                    matchWithRetailer(unmatchedListing, unitPrice)
+                }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS
             return matchings.map {
@@ -138,8 +135,11 @@ object MatchingFlow {
                 val consumerAmount = consumerListing.state.data.amount
 
                 if (producerAmount == consumerAmount) {
-                    val match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
-                    matchings.add(match)
+                    matchings.apply {
+                        add(
+                            Matching(unitPrice, producerAmount, producerListing, consumerListing)
+                        )
+                    }
                 } else {
                     matchWithDifferentAmount(
                         producerStateIterator,
@@ -147,19 +147,14 @@ object MatchingFlow {
                         progressTracker,
                         unitPrice,
                         producerListing,
-                        consumerListing,
-                        producerAmount,
-                        consumerAmount
+                        consumerListing
                     )
                 }
             }
             return when {
-                producerStateIterator.hasNext() ->
-                    producerStateIterator
-                consumerStateIterator.hasNext() ->
-                    consumerStateIterator
-                else ->
-                    emptyList<StateAndRef<ListingState>>().iterator()
+                producerStateIterator.hasNext() -> producerStateIterator
+                consumerStateIterator.hasNext() -> consumerStateIterator
+                else -> emptyList<StateAndRef<ListingState>>().iterator()
             }
         }
 
@@ -169,18 +164,20 @@ object MatchingFlow {
             progressTracker: ProgressTracker,
             unitPrice: Int,
             producerListing: StateAndRef<ListingState>,
-            consumerListing: StateAndRef<ListingState>,
-            producerAmount: Int,
-            consumerAmount: Int
+            consumerListing: StateAndRef<ListingState>
         ) {
+            val producerAmount = producerListing.state.data.amount
+            val consumerAmount = consumerListing.state.data.amount
             val isProducerSurplus = producerAmount > consumerAmount
+
             val higherListing = if (isProducerSurplus) producerListing else consumerListing
             val lowerListing = if (isProducerSurplus) consumerListing else producerListing
             val higherAmount = if (isProducerSurplus) producerAmount else consumerAmount
             val lowerAmount = if (isProducerSurplus) consumerAmount else producerAmount
+
             // Split Higher Listing State
             val remainderAmount = higherAmount - lowerAmount
-            val stx: SignedTransaction = subFlow(
+            val stx = subFlow(
                 SplitListingStateFlow.Initiator(
                     higherListing,
                     lowerAmount,
@@ -195,57 +192,57 @@ object MatchingFlow {
             val higherRemainingListingStateAndRef =
                 splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
 
-            val match = Matching(
-                unitPrice,
-                lowerAmount,
-                if (isProducerSurplus) higherRequiredListingStateAndRef else lowerListing,
-                if (isProducerSurplus) lowerListing else higherRequiredListingStateAndRef
-            )
-            matchings.add(match)
+            matchings.apply {
+                add(
+                    Matching(
+                        unitPrice,
+                        lowerAmount,
+                        if (isProducerSurplus) higherRequiredListingStateAndRef else lowerListing,
+                        if (isProducerSurplus) lowerListing else higherRequiredListingStateAndRef
+                    )
+                )
+            }
 
             // Add left over energy state to the producers/consumer list
             // maybe another elegant solution?
-            val iterator = if (isProducerSurplus) producerStateIterator else consumerStateIterator
-            iterator.add(higherRemainingListingStateAndRef)
-            // Jump to the previous value to still iterate over the just added value
-            iterator.previous()
+            (if (isProducerSurplus) producerStateIterator else consumerStateIterator).apply {
+                add(higherRemainingListingStateAndRef)
+                // Jump to the previous value to still iterate over the just added value
+                previous()
+            }
         }
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
-            val match: Matching
-            val retailerSignedTx: SignedTransaction
-            if (listingState.listingType == ListingTypes.ProducerListing) {
-                retailerSignedTx = subFlow(
-                    ListingFlowInitiator(
-                        listingState.electricityType,
-                        unitPrice,
-                        listingState.amount,
-                        ourIdentity,
-                        0,
+            val retailerSignedTx = subFlow(
+                ListingFlowInitiator(
+                    listingState.electricityType,
+                    unitPrice,
+                    listingState.amount,
+                    ourIdentity,
+                    0,
+                    if (listingState.listingType == ListingTypes.ProducerListing)
                         ListingTypes.ConsumerListing
-                    )
+                    else ListingTypes.ProducerListing
                 )
-                val retailerStateAndRef =
-                    retailerSignedTx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>().first()
-                match = Matching(unitPrice, listingState.amount, listingStateAndRef, retailerStateAndRef)
-            } else {
-                retailerSignedTx = subFlow(
-                    ListingFlowInitiator(
-                        listingState.electricityType,
+            )
+            val retailerStateAndRef =
+                retailerSignedTx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>().first()
+
+            matchings.apply {
+                add(
+                    Matching(
                         unitPrice,
                         listingState.amount,
-                        ourIdentity,
-                        0,
-                        ListingTypes.ProducerListing
+                        if (listingState.listingType == ListingTypes.ProducerListing)
+                            listingStateAndRef
+                        else retailerStateAndRef,
+                        if (listingState.listingType == ListingTypes.ProducerListing)
+                            retailerStateAndRef
+                        else listingStateAndRef
                     )
                 )
-                val retailerStateAndRef =
-                    retailerSignedTx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>().first()
-                match = Matching(unitPrice, listingState.amount, retailerStateAndRef, listingStateAndRef)
             }
-
-            matchings.add(match)
         }
 
     }
