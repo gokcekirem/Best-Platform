@@ -83,7 +83,7 @@ object MatchingFlow {
             val consumerStates = listingStates.filter { it.listingType == ListingTypes.ConsumerListing }
 
             progressTracker.currentStep = CALCULATING_UNIT_PRICE
-//            val matchings = HashSet<Matching>()
+
             val consumerEnergySum = consumerStates.map { it.amount }.sum()
             val producerEnergySum = producerStates.map { it.amount }.sum()
             val participatingProducerStates: List<ListingState>
@@ -106,8 +106,8 @@ object MatchingFlow {
             // TODO Split up the states via a split flow during the matching
             // TODO Randomly map the producers to the consumers
 
-            var consumerStateIterator = 0
-            var producerStateIterator = 0
+            val consumerStateIterator = 0
+            val producerStateIterator = 0
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
@@ -161,7 +161,7 @@ object MatchingFlow {
                 }
             }
 
-            var match: Matching
+            val match: Matching
 
             val pListing = producerStates[producerStateIterator]
             val cListing = consumerStates[consumerStateIterator]
@@ -173,7 +173,7 @@ object MatchingFlow {
                 matchings.add(match)
 
                 matchListings(
-                    unitPrice!!,
+                    unitPrice,
                     producerStates,
                     consumerStates,
                     producerStateIterator + 1,
@@ -204,7 +204,7 @@ object MatchingFlow {
                 )
                 matchings.add(match)
 
-                var updatedProducerStates = producerStates.toMutableList()
+                val updatedProducerStates = producerStates.toMutableList()
                 // Add left over energy state to the producers list
                 // maybe another elegant solution?
                 updatedProducerStates.add(
@@ -215,7 +215,7 @@ object MatchingFlow {
                     )
                 )
                 matchListings(
-                    unitPrice!!,
+                    unitPrice,
                     updatedProducerStates,
                     consumerStates,
                     producerStateIterator + 1,
@@ -248,7 +248,7 @@ object MatchingFlow {
                 )
                 matchings.add(match)
 
-                var updatedConsumerStates = consumerStates.toMutableList()
+                val updatedConsumerStates = consumerStates.toMutableList()
                 // Add left over energy state to the consumers list
                 // maybe another elegant solution?
                 updatedConsumerStates.add(
@@ -259,7 +259,7 @@ object MatchingFlow {
                     )
                 )
                 matchListings(
-                    unitPrice!!,
+                    unitPrice,
                     producerStates,
                     updatedConsumerStates,
                     producerStateIterator + 1,
