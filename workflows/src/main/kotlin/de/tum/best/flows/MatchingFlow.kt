@@ -48,7 +48,7 @@ object MatchingFlow {
 
         override val progressTracker = tracker()
 
-        val matchings = HashSet<Matching>()
+        private val matchings = HashSet<Matching>()
         val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
         @Suspendable
@@ -136,7 +136,6 @@ object MatchingFlow {
             val producerStateIterator = producerStates.listIterator()
             val consumerStateIterator = consumerStates.listIterator()
             while (producerStateIterator.hasNext() && consumerStateIterator.hasNext()) {
-                val match: Matching
 
                 val producerListing = producerStateIterator.next()
                 val consumerListing = consumerStateIterator.next()
@@ -144,71 +143,19 @@ object MatchingFlow {
                 val consumerAmount = consumerListing.state.data.amount
 
                 if (producerAmount == consumerAmount) {
-                    match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
+                    val match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
                     matchings.add(match)
-                } else if (producerAmount > consumerAmount) {
-                    // Split Producer Listing State
-                    val remainderAmount = producerAmount - consumerAmount
-                    val stx: SignedTransaction = subFlow(
-                        SplitListingStateFlow.Initiator(
-                            producerListing,
-                            consumerAmount,
-                            remainderAmount,
-                            progressTracker
-                        )
-                    )
-                    // Get the 2 newly created states
-                    val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-                    val producerRequiredListingStateAndRef =
-                        splitListingsStateAndRef.single { it.state.data.amount == consumerAmount }
-                    val producerRemainingListingStateAndRef =
-                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
-
-                    match = Matching(
+                } else {
+                    matchWithDifferentAmount(
+                        producerStateIterator,
+                        consumerStateIterator,
+                        progressTracker,
                         unitPrice,
-                        consumerAmount,
-                        producerRequiredListingStateAndRef,
-                        consumerListing
-                    )
-                    matchings.add(match)
-
-                    // Add left over energy state to the producers list
-                    // maybe another elegant solution?
-                    producerStateIterator.add(producerRemainingListingStateAndRef)
-                    // Jump to the previous vale to still iterate over the just added value
-                    producerStateIterator.previous()
-                } else if (producerAmount < consumerAmount) {
-                    // Split Consumer Listing State
-                    val remainderAmount = consumerAmount - producerAmount
-                    val stx: SignedTransaction = subFlow(
-                        SplitListingStateFlow.Initiator(
-                            consumerListing,
-                            producerAmount,
-                            remainderAmount,
-                            progressTracker
-                        )
-                    )
-                    // Get the 2 newly created states
-                    val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-                    val consumerRequiredListingStateAndRef =
-                        splitListingsStateAndRef.single { it.state.data.amount == producerAmount }
-                    val consumerRemainingListingStateAndRef =
-                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
-
-                    // Create and add match to matching list
-                    match = Matching(
-                        unitPrice,
-                        producerAmount,
                         producerListing,
-                        consumerRequiredListingStateAndRef
+                        consumerListing,
+                        producerAmount,
+                        consumerAmount
                     )
-                    matchings.add(match)
-
-                    // Add left over energy state to the consumers list
-                    // maybe another elegant solution?
-                    consumerStateIterator.add(consumerRemainingListingStateAndRef)
-                    // Jump to the previous vale to still iterate over the just added value
-                    consumerStateIterator.previous()
                 }
             }
             return when {
@@ -219,6 +166,54 @@ object MatchingFlow {
                 else ->
                     emptyList<StateAndRef<ListingState>>().iterator()
             }
+        }
+
+        private fun matchWithDifferentAmount(
+            producerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
+            consumerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
+            progressTracker: ProgressTracker,
+            unitPrice: Int,
+            producerListing: StateAndRef<ListingState>,
+            consumerListing: StateAndRef<ListingState>,
+            producerAmount: Int,
+            consumerAmount: Int
+        ) {
+            val isProducerSurplus = producerAmount > consumerAmount
+            val higherListing = if (isProducerSurplus) producerListing else consumerListing
+            val lowerListing = if (isProducerSurplus) consumerListing else producerListing
+            val higherAmount = if (isProducerSurplus) producerAmount else consumerAmount
+            val lowerAmount = if (isProducerSurplus) consumerAmount else producerAmount
+            // Split Higher Listing State
+            val remainderAmount = higherAmount - lowerAmount
+            val stx: SignedTransaction = subFlow(
+                SplitListingStateFlow.Initiator(
+                    higherListing,
+                    lowerAmount,
+                    remainderAmount,
+                    progressTracker
+                )
+            )
+            // Get the 2 newly created states
+            val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
+            val higherRequiredListingStateAndRef =
+                splitListingsStateAndRef.single { it.state.data.amount == lowerAmount }
+            val higherRemainingListingStateAndRef =
+                splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+
+            val match = Matching(
+                unitPrice,
+                lowerAmount,
+                if (isProducerSurplus) higherRequiredListingStateAndRef else lowerListing,
+                if (isProducerSurplus) lowerListing else higherRequiredListingStateAndRef
+            )
+            matchings.add(match)
+
+            // Add left over energy state to the producers/consumer list
+            // maybe another elegant solution?
+            val iterator = if (isProducerSurplus) producerStateIterator else consumerStateIterator
+            iterator.add(higherRemainingListingStateAndRef)
+            // Jump to the previous value to still iterate over the just added value
+            iterator.previous()
         }
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
