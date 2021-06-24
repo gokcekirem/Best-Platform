@@ -21,11 +21,6 @@ object MatchingFlow {
         val consumerStateAndRef: StateAndRef<ListingState>
     )
 
-    data class UnMatchedListings(
-        val listings: List<StateAndRef<ListingState>>,
-        val currentIterator: Int
-    )
-
     @InitiatingFlow
     @StartableByRPC
     class Initiator() : FlowLogic<Collection<SignedTransaction>>() {
@@ -105,7 +100,7 @@ object MatchingFlow {
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
-            val unMatchedListings = matchListings(
+            val unmatchedListings = matchListings(
                 unitPrice!!,
                 producersStateAndRefs.toMutableList(),
                 consumersStateAndRefs.toMutableList(),
@@ -113,10 +108,8 @@ object MatchingFlow {
             )
 
             // Create matches with the retailer
-            if (unMatchedListings.listings.isNotEmpty()) {
-                for (i in unMatchedListings.currentIterator until unMatchedListings.listings.size) {
-                    matchWithRetailer(unMatchedListings.listings[i], unitPrice)
-                }
+            unmatchedListings.forEach { unmatchedListing ->
+                matchWithRetailer(unmatchedListing, unitPrice)
             }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS
@@ -138,7 +131,7 @@ object MatchingFlow {
             producerStates: MutableList<StateAndRef<ListingState>>,
             consumerStates: MutableList<StateAndRef<ListingState>>,
             progressTracker: ProgressTracker
-        ): UnMatchedListings {
+        ): Iterator<StateAndRef<ListingState>> {
             //could possibly have 1 iterator with the current approach
             val producerStateIterator = producerStates.listIterator()
             val consumerStateIterator = consumerStates.listIterator()
@@ -220,11 +213,11 @@ object MatchingFlow {
             }
             return when {
                 producerStateIterator.hasNext() ->
-                    UnMatchedListings(producerStates, producerStateIterator.nextIndex())
+                    producerStateIterator
                 consumerStateIterator.hasNext() ->
-                    UnMatchedListings(consumerStates, consumerStateIterator.nextIndex())
+                    consumerStateIterator
                 else ->
-                    UnMatchedListings(emptyList(), 0)
+                    emptyList<StateAndRef<ListingState>>().iterator()
             }
         }
 
