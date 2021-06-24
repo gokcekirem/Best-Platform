@@ -163,13 +163,13 @@ object MatchingFlow {
 
             val match: Matching
 
-            val pListing = producerStates[producerStateIterator]
-            val cListing = consumerStates[consumerStateIterator]
-            val pAmount = producerStates[producerStateIterator].state.data.amount
-            val cAmount = consumerStates[consumerStateIterator].state.data.amount
+            val producerListing = producerStates[producerStateIterator]
+            val consumerListing = consumerStates[consumerStateIterator]
+            val producerAmount = producerListing.state.data.amount
+            val consumerAmount = consumerListing.state.data.amount
 
-            if (pAmount == cAmount) {
-                match = Matching(unitPrice, pAmount, pListing, cListing)
+            if (producerAmount == consumerAmount) {
+                match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
                 matchings.add(match)
 
                 matchListings(
@@ -180,27 +180,30 @@ object MatchingFlow {
                     consumerStateIterator + 1,
                     progressTracker
                 )
-            } else if (pAmount > cAmount) {
+            } else if (producerAmount > consumerAmount) {
                 // Split Producer Listing State
-                val remainderAmount = pAmount - cAmount
+                val remainderAmount = producerAmount - consumerAmount
                 val stx: SignedTransaction = subFlow(
                     SplitListingStateFlow.Initiator(
-                        pListing,
-                        cAmount,
+                        producerListing,
+                        consumerAmount,
                         remainderAmount,
                         progressTracker
                     )
                 )
                 // Get the 2 newly created states
                 val ledgerTx = stx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>()
-                val pReqListing = ledgerTx.single { it.amount == cAmount }
-                val pRemListing = ledgerTx.single { it.amount == remainderAmount }
+                val producerRequiredListing = ledgerTx.single { it.amount == consumerAmount }
+                val producerRemainingListing = ledgerTx.single { it.amount == remainderAmount }
 
                 match = Matching(
                     unitPrice,
-                    cAmount,
-                    StateAndRef(TransactionState(pReqListing, notary = notary), StateRef(pReqListing.hash(), 0)),
-                    cListing
+                    consumerAmount,
+                    StateAndRef(
+                        TransactionState(producerRequiredListing, notary = notary),
+                        StateRef(producerRequiredListing.hash(), 0)
+                    ),
+                    consumerListing
                 )
                 matchings.add(match)
 
@@ -210,8 +213,8 @@ object MatchingFlow {
                 updatedProducerStates.add(
                     index = producerStateIterator + 1,
                     element = StateAndRef(
-                        TransactionState(pRemListing, notary = notary),
-                        StateRef(pRemListing.hash(), 0)
+                        TransactionState(producerRemainingListing, notary = notary),
+                        StateRef(producerRemainingListing.hash(), 0)
                     )
                 )
                 matchListings(
@@ -223,28 +226,31 @@ object MatchingFlow {
                     progressTracker
                 )
 
-            } else if (pAmount < cAmount) {
+            } else if (producerAmount < consumerAmount) {
                 // Split Consumer Listing State
-                val remainderAmount = cAmount - pAmount
+                val remainderAmount = consumerAmount - producerAmount
                 val stx: SignedTransaction = subFlow(
                     SplitListingStateFlow.Initiator(
-                        cListing,
-                        pAmount,
+                        consumerListing,
+                        producerAmount,
                         remainderAmount,
                         progressTracker
                     )
                 )
                 // Get the 2 newly created states
                 val ledgerTx = stx.toLedgerTransaction(serviceHub).outputsOfType<ListingState>()
-                val cReqListing = ledgerTx.single { it.amount == pAmount }
-                val cRemListing = ledgerTx.single { it.amount == remainderAmount }
+                val consumerRequiredListing = ledgerTx.single { it.amount == producerAmount }
+                val consumerRemainingListing = ledgerTx.single { it.amount == remainderAmount }
 
                 // Create and add match to matching list
                 match = Matching(
                     unitPrice,
-                    pAmount,
-                    pListing,
-                    StateAndRef(TransactionState(cReqListing, notary = notary), StateRef(cReqListing.hash(), 0))
+                    producerAmount,
+                    producerListing,
+                    StateAndRef(
+                        TransactionState(consumerRequiredListing, notary = notary),
+                        StateRef(consumerRequiredListing.hash(), 0)
+                    )
                 )
                 matchings.add(match)
 
@@ -254,8 +260,8 @@ object MatchingFlow {
                 updatedConsumerStates.add(
                     index = consumerStateIterator + 1,
                     element = StateAndRef(
-                        TransactionState(cRemListing, notary = notary),
-                        StateRef(cRemListing.hash(), 0)
+                        TransactionState(consumerRemainingListing, notary = notary),
+                        StateRef(consumerRemainingListing.hash(), 0)
                     )
                 )
                 matchListings(
