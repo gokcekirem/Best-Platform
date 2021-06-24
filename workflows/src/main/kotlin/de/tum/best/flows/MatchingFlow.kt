@@ -30,8 +30,8 @@ object MatchingFlow {
             // TODO Update Progress Descriptions
             object SEARCHING_STATES : ProgressTracker.Step("Generating transaction based on new IOU.")
             object CALCULATING_UNIT_PRICE : ProgressTracker.Step("Verifying contract constraints.")
-            object GENERATING_MATCHINGS : ProgressTracker.Step("Verifying contract constraints.")
-            object SPLITTING_STATE_FLOW : ProgressTracker.Step("Splitting Transaction according to required amounts.") {
+            object GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW :
+                ProgressTracker.Step("Splitting Transaction according to required amounts.") {
                 override fun childProgressTracker() = SplitListingStateFlow.Initiator.tracker()
             }
 
@@ -42,7 +42,7 @@ object MatchingFlow {
             fun tracker() = ProgressTracker(
                 SEARCHING_STATES,
                 CALCULATING_UNIT_PRICE,
-                GENERATING_MATCHINGS,
+                GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW,
                 EXECUTING_SINGLE_MATCHING_FLOWS
             )
         }
@@ -90,15 +90,14 @@ object MatchingFlow {
                 participatingProducerStates.last().unitPrice
             }
 
-            progressTracker.currentStep = SPLITTING_STATE_FLOW
+            progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
             matchListings(
                 unitPrice,
                 producersStateAndRefs.toMutableList(),
-                consumersStateAndRefs.toMutableList(),
-                SPLITTING_STATE_FLOW.childProgressTracker()
+                consumersStateAndRefs.toMutableList()
             )
                 // Create matches with the retailer
                 .forEach { unmatchedListing ->
@@ -122,12 +121,14 @@ object MatchingFlow {
         private fun matchListings(
             unitPrice: Int,
             producerStates: MutableList<StateAndRef<ListingState>>,
-            consumerStates: MutableList<StateAndRef<ListingState>>,
-            progressTracker: ProgressTracker
+            consumerStates: MutableList<StateAndRef<ListingState>>
         ): Iterator<StateAndRef<ListingState>> {
             //could possibly have 1 iterator with the current approach
             val producerStateIterator = producerStates.listIterator()
             val consumerStateIterator = consumerStates.listIterator()
+
+            val splittingFlowProgressTracker = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW.childProgressTracker()
+
             while (producerStateIterator.hasNext() && consumerStateIterator.hasNext()) {
 
                 val producerListing = producerStateIterator.next()
@@ -145,7 +146,7 @@ object MatchingFlow {
                     matchWithDifferentAmount(
                         producerStateIterator,
                         consumerStateIterator,
-                        progressTracker,
+                        splittingFlowProgressTracker,
                         unitPrice,
                         producerListing,
                         consumerListing
