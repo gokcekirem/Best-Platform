@@ -73,7 +73,7 @@ object ResetMarketTimeFlow {
             val inputStateAndRef = marketTimeStateAndRefs.last()
             val inputState = inputStateAndRef.state.data
 
-            val outputState = MarketTimeState(inputState.globalCounter+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val outputState = MarketTimeState(inputState.marketClock+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
@@ -124,7 +124,7 @@ object ResetMarketTimeFlow {
                     "The MarketTime value after Reset must be equal to 0" using (marketT.marketTime == 0 )
                     //A MarketTime Value other than 0 should not be possible since this is the Reset flow
 
-                    "globalCounter value in the output State must be 1 unit greater than the one in the input state" using(marketT.globalCounter == inputmarketT.globalCounter + 1)
+                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(marketT.marketClock == inputmarketT.marketClock + 1)
 
                 }
             }

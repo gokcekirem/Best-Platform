@@ -76,7 +76,7 @@ object InitiateMarketTimeFlow {
             val inputStateAndRef = marketTimeStateAndRefs[0]
             val inputState = inputStateAndRef.state.data
 
-            val outputState = MarketTimeState(inputState.globalCounter,inputState.marketTime + 1, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val outputState = MarketTimeState(inputState.marketClock,inputState.marketTime + 1, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION

@@ -22,7 +22,7 @@ import java.util.*
 
 @BelongsToContract(MarketTimeContract::class)
 class MarketTimeState (
-    val globalCounter: Int,
+    val marketClock: Int,
     val marketTime: Int,
     val sender: Party,
     val receiver: Party,

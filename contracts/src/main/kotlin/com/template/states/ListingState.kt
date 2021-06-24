@@ -23,7 +23,7 @@ import net.corda.core.identity.Party
 //                          for command -> ProducerListing this is how much electricity the node would like to sell
 //      sender:             ID of the node creating this listing
 //      matcher:            ID of the node which will be responsible for matching producers and consumers
-//      marketTime:         Current market time
+//      marketClock:        Current market clock
 //
 // *********
 @BelongsToContract(ListingContract::class)
@@ -34,7 +34,7 @@ data class ListingState(
     val amount: Int,
     val sender: Party,
     val matcher: Party,
-    val marketTime: Int,
+    val marketClock: Int,
     override val participants: List<AbstractParty> = listOf(sender, matcher)
 ) : ContractState
 

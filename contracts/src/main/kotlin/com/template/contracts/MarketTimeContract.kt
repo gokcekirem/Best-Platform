@@ -49,7 +49,7 @@ class MarketTimeContract : Contract {
 
                 "marketTime value must be lower than 3." using(marketTime.marketTime <3)
 
-                "globalCounter value must be non-negative" using(marketTime.globalCounter > 0)
+                "marketClock value must be non-negative" using(marketTime.marketClock > 0)
             }
         }
     }

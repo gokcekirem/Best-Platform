@@ -37,7 +37,7 @@ import net.corda.core.identity.AbstractParty
 //  unitPrice:          Price of one unit of electricity
 //  amount:             The amount of electricity this transaction is for
 //  matcher:            ID of the matching service node
-//  marketTime:         Current market time (@TODO Optional: instead of taking this as an input maybe another way? )
+//  marketClock:         Current market time (@TODO Optional: instead of taking this as an input maybe another way? )
 //  transactionType:    Determines the type of the listing (1 -> ProducerListing, 0 -> ConsumerListing)
 
 @InitiatingFlow
@@ -46,7 +46,7 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
-                           private val marketTime: Int,
+                           private val marketClock: Int,
                            private val transactionType: ListingTypes): FlowLogic<SignedTransaction>() {
     override val progressTracker = ProgressTracker()
 
@@ -60,7 +60,7 @@ class ListingFlowInitiator(private val electricityType: Int,
         // TODO : Look for a more elegant way
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
         
-        val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketTime)
+        val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
         if(transactionType == ListingTypes.ProducerListing){

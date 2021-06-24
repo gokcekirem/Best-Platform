@@ -227,7 +227,7 @@ object MatchingFlow {
                     unitPrice,
                     listingState.amount,
                     ourIdentity,
-                    marketTimeStateAndRef.state.data.globalCounter,
+                    marketTimeStateAndRef.state.data.marketClock,
                     if (listingState.listingType == ListingTypes.ProducerListing)
                         ListingTypes.ConsumerListing
                     else ListingTypes.ProducerListing
