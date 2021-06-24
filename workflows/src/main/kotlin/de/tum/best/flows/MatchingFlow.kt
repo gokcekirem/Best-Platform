@@ -23,14 +23,14 @@ object MatchingFlow {
 
     @InitiatingFlow
     @StartableByRPC
-    class Initiator() : FlowLogic<Collection<SignedTransaction>>() {
+    class Initiator : FlowLogic<Collection<SignedTransaction>>() {
 
         companion object {
             // TODO Update Progress Descriptions
             object SEARCHING_STATES : ProgressTracker.Step("Generating transaction based on new IOU.")
             object CALCULATING_UNIT_PRICE : ProgressTracker.Step("Verifying contract constraints.")
             object GENERATING_MATCHINGS : ProgressTracker.Step("Verifying contract constraints.")
-            object SPLITING_STATE_FLOW : ProgressTracker.Step("Splitting Transaction according to required amounts.") {
+            object SPLITTING_STATE_FLOW : ProgressTracker.Step("Splitting Transaction according to required amounts.") {
                 override fun childProgressTracker() = SplitListingStateFlow.Initiator.tracker()
             }
 
@@ -49,7 +49,6 @@ object MatchingFlow {
         override val progressTracker = tracker()
 
         private val matchings = HashSet<Matching>()
-        val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
         @Suspendable
         override fun call(): Collection<SignedTransaction> {
@@ -91,7 +90,7 @@ object MatchingFlow {
                 participatingProducerStates.last().unitPrice
             }
 
-            progressTracker.currentStep = SPLITING_STATE_FLOW
+            progressTracker.currentStep = SPLITTING_STATE_FLOW
 
             // TODO Retailer has same unit price as the rest of the producers and consumers
             // TODO Split up the state conceptually into unit states for matching
@@ -104,7 +103,7 @@ object MatchingFlow {
                 unitPrice!!,
                 producersStateAndRefs.toMutableList(),
                 consumersStateAndRefs.toMutableList(),
-                SPLITING_STATE_FLOW.childProgressTracker()
+                SPLITTING_STATE_FLOW.childProgressTracker()
             )
 
             // Create matches with the retailer
