@@ -1,8 +1,8 @@
-package com.template
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.MarketTimeContract
-import com.template.states.MarketTimeState
+import de.tum.best.contracts.MarketTimeContract
+import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -15,11 +15,12 @@ import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 //import java.util.*
 
+
 /**
- * Market Reset (t2) Initiator Flow
+ * Market Clearing (t1) Initiator Flow
  */
 
-object ResetMarketTimeFlow {
+object ClearMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
     class Initiator(
@@ -56,6 +57,7 @@ object ResetMarketTimeFlow {
          */
         @Suspendable
         override fun call(): SignedTransaction {
+
             // Obtain a reference from a notary we wish to use.
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
@@ -73,14 +75,14 @@ object ResetMarketTimeFlow {
             val inputStateAndRef = marketTimeStateAndRefs.last()
             val inputState = inputStateAndRef.state.data
 
-            val outputState = MarketTimeState(inputState.marketClock+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val outputState = MarketTimeState(inputState.marketClock,inputState.marketTime + 1, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
 
             // Generate an unsigned transaction.
 
-            val txCommand = Command(MarketTimeContract.Commands.ResetMarketTime(),outputState.participants.map { it.owningKey })
+            val txCommand = Command(MarketTimeContract.Commands.ClearMarketTime(),outputState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
@@ -100,12 +102,16 @@ object ResetMarketTimeFlow {
             progressTracker.currentStep = GATHERINGSIGS
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(otherParty)
-            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERINGSIGS.childProgressTracker()))
+            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession),
+                GATHERINGSIGS.childProgressTracker()
+            ))
 
             // Stage 5.
             progressTracker.currentStep = FINALISINGTRANSACTION
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession), FINALISINGTRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession),
+                FINALISINGTRANSACTION.childProgressTracker()
+            ))
         }
     }
 
@@ -118,19 +124,15 @@ object ResetMarketTimeFlow {
                     val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
-                    "MarketTime value in the previous (Input) state must be equal to 2" using(inputmarketT.marketTime == 2)
+                    "The MarketTime value in the previous (input) state must be equal to 1." using (inputmarketT.marketTime == 1 )
 
                     val marketT = output
-                    "The MarketTime value after Reset must be equal to 0" using (marketT.marketTime == 0 )
-                    //A MarketTime Value other than 0 should not be possible since this is the Reset flow
-
-                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(marketT.marketClock == inputmarketT.marketClock + 1)
+                    "MarketTime value after Market Clearing must be equal to 2." using(marketT.marketTime == 2)
+                    //A MarketTime Value other than 2 should not be possible since this is the market clearing flow
 
                 }
             }
             val txId = subFlow(signTransactionFlow).id
-
-
 
             return subFlow(ReceiveFinalityFlow(otherPartySession, expectedTxId = txId))
         }

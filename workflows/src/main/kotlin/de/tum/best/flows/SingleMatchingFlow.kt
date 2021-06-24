@@ -1,7 +1,7 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.states.ListingState
+import de.tum.best.states.ListingState
 import de.tum.best.contracts.MatchingContract
 import de.tum.best.states.MatchingState
 import net.corda.core.contracts.Command

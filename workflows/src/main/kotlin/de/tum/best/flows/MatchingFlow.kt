@@ -1,10 +1,9 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.flows.ListingFlowInitiator
-import com.template.states.ListingState
-import com.template.states.ListingTypes
-import com.template.states.MarketTimeState
+import de.tum.best.states.ListingState
+import de.tum.best.states.ListingTypes
+import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault

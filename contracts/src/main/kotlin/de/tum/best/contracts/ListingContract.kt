@@ -1,6 +1,6 @@
-package com.template.contracts
+package de.tum.best.contracts
 
-import com.template.states.ListingState
+import de.tum.best.states.ListingState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
 import net.corda.core.contracts.requireSingleCommand
@@ -16,7 +16,7 @@ import net.corda.core.transactions.LedgerTransaction
 class ListingContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
-        const val ID = "com.template.contracts.ListingContract"
+        const val ID = "de.tum.best.contracts.ListingContract"
     }
 
     // A transaction is valid if the verify() function of the contract of all the transaction's input and output states

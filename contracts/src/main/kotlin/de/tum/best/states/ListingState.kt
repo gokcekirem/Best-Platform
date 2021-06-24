@@ -1,6 +1,6 @@
-package com.template.states
+package de.tum.best.states
 
-import com.template.contracts.ListingContract
+import de.tum.best.contracts.ListingContract
 import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.ContractState
 import net.corda.core.identity.AbstractParty

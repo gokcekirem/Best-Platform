@@ -1,6 +1,6 @@
-package com.template.contracts
+package de.tum.best.contracts
 
-import com.template.states.MarketTimeState
+import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
 import net.corda.core.contracts.requireSingleCommand
@@ -10,13 +10,13 @@ import net.corda.core.contracts.requireThat
 class MarketTimeContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
-        const val ID = "com.template.contracts.MarketTimeContract"
+        const val ID = "de.tum.best.contracts.MarketTimeContract"
     }
 
     override fun verify(tx: LedgerTransaction) {
         // Step 1: Get the corresponding command attached to this transaction. Every transaction should have only 1
         //         command attached to them
-        val command = tx.commands.requireSingleCommand<MarketTimeContract.Commands>()
+        val command = tx.commands.requireSingleCommand<Commands>()
 
         // Step 2: Get the corresponding output state
         val outputs = tx.outputsOfType<MarketTimeState>()

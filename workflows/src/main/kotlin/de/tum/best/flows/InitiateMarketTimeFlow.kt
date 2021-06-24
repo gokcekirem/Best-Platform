@@ -1,8 +1,8 @@
-package com.template
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.MarketTimeContract
-import com.template.states.MarketTimeState
+import de.tum.best.contracts.MarketTimeContract
+import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -17,10 +17,10 @@ import net.corda.core.utilities.ProgressTracker
 
 
 /**
- * Market Clearing (t1) Initiator Flow
+ * Accept ask and bids (t1) period initiator flow
  */
 
-object ClearMarketTimeFlow {
+object InitiateMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
     class Initiator(
@@ -30,7 +30,7 @@ object ClearMarketTimeFlow {
          * checkpoint is reached in the code. See the 'progressTracker.currentStep' expressions within the call() function.
          */
         companion object {
-            object GENERATINGTRANSACTION : ProgressTracker.Step("Generating transaction based on new Update on MarketTime .")
+            object GENERATINGTRANSACTION : ProgressTracker.Step("Generating transaction based on new MarketTime Initiation.")
             object VERIFYINGTRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNINGTRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
             object GATHERINGSIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {
@@ -62,9 +62,9 @@ object ClearMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
-            // Query the vault to fetch a list of all MarketTimeState states, and get the last state (input State)
-            // to fetch the desired MarketTimeState state from the vault. This filtered state would be used as input to the
-            // transaction.
+            // Query the vault to fetch a list of all MarketTimeState states
+            // to fetch the desired MarketTimeState state from the vault and get the last state (unconsumed input State).
+            // This filtered state would be used as input to the transaction.
 
             val queryCriteria = QueryCriteria.VaultQueryCriteria(
                 Vault.StateStatus.UNCONSUMED,
@@ -72,7 +72,7 @@ object ClearMarketTimeFlow {
                 null)
 
             val marketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
-            val inputStateAndRef = marketTimeStateAndRefs.last()
+            val inputStateAndRef = marketTimeStateAndRefs[0]
             val inputState = inputStateAndRef.state.data
 
             val outputState = MarketTimeState(inputState.marketClock,inputState.marketTime + 1, serviceHub.myInfo.legalIdentities.first(), otherParty)
@@ -82,11 +82,10 @@ object ClearMarketTimeFlow {
 
             // Generate an unsigned transaction.
 
-            val txCommand = Command(MarketTimeContract.Commands.ClearMarketTime(),outputState.participants.map { it.owningKey })
+            val txCommand = Command(MarketTimeContract.Commands.InitiateMarketTime(),outputState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
-
 
             // Stage 2.
             progressTracker.currentStep = VERIFYINGTRANSACTION
@@ -102,12 +101,16 @@ object ClearMarketTimeFlow {
             progressTracker.currentStep = GATHERINGSIGS
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(otherParty)
-            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERINGSIGS.childProgressTracker()))
+            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession),
+                GATHERINGSIGS.childProgressTracker()
+            ))
 
             // Stage 5.
             progressTracker.currentStep = FINALISINGTRANSACTION
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession), FINALISINGTRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession),
+                FINALISINGTRANSACTION.childProgressTracker()
+            ))
         }
     }
 
@@ -120,11 +123,12 @@ object ClearMarketTimeFlow {
                     val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
                     val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
-                    "The MarketTime value in the previous (input) state must be equal to 1." using (inputmarketT.marketTime == 1 )
+                    "MarketTime value in the previous (Input) state must be equal to 0." using(inputmarketT.marketTime == 0)
 
                     val marketT = output
-                    "MarketTime value after Market Clearing must be equal to 2." using(marketT.marketTime == 2)
-                    //A MarketTime Value other than 2 should not be possible since this is the market clearing flow
+                    "MarketTime value must be equal to 1 after initialization." using (marketT.marketTime == 1)
+                    //A MarketTime Value other than 1 should not be possible since this is the initiation flow
+
 
                 }
             }

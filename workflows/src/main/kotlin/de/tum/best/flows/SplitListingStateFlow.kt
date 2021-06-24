@@ -1,9 +1,8 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.ListingContract
-import com.template.states.ListingState
-import de.tum.best.contracts.MatchingContract
+import de.tum.best.contracts.ListingContract
+import de.tum.best.states.ListingState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*

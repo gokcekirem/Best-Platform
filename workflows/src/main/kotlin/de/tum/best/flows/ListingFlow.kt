@@ -1,4 +1,4 @@
-package com.template.flows
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.flows.*
@@ -15,12 +15,12 @@ import net.corda.core.flows.FlowSession
 
 import net.corda.core.identity.Party
 
-import com.template.contracts.ListingContract
+import de.tum.best.contracts.ListingContract
 
 import net.corda.core.transactions.TransactionBuilder
 
-import com.template.states.ListingState
-import com.template.states.ListingTypes
+import de.tum.best.states.ListingState
+import de.tum.best.states.ListingTypes
 import net.corda.core.contracts.requireThat
 import net.corda.core.identity.AbstractParty
 
@@ -47,7 +47,8 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val amount: Int,
                            private val matcher: Party,
                            private val marketClock: Int,
-                           private val transactionType: ListingTypes): FlowLogic<SignedTransaction>() {
+                           private val transactionType: ListingTypes
+): FlowLogic<SignedTransaction>() {
     override val progressTracker = ProgressTracker()
 
     override fun call(): SignedTransaction {
