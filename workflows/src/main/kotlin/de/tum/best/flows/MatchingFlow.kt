@@ -103,9 +103,6 @@ object MatchingFlow {
             // TODO Split up the states via a split flow during the matching
             // TODO Randomly map the producers to the consumers
 
-            val consumerStateIterator = 0
-            val producerStateIterator = 0
-
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
             val unMatchedListings = matchListings(
@@ -143,22 +140,19 @@ object MatchingFlow {
             progressTracker: ProgressTracker
         ): UnMatchedListings {
             //could possibly have 1 iterator with the current approach
-            var producerStateIterator = 0
-            var consumerStateIterator = 0
-            while (producerStateIterator != producerStates.size && consumerStateIterator != consumerStates.size) {
+            val producerStateIterator = producerStates.listIterator()
+            val consumerStateIterator = consumerStates.listIterator()
+            while (producerStateIterator.hasNext() && consumerStateIterator.hasNext()) {
                 val match: Matching
 
-                val producerListing = producerStates[producerStateIterator]
-                val consumerListing = consumerStates[consumerStateIterator]
+                val producerListing = producerStateIterator.next()
+                val consumerListing = consumerStateIterator.next()
                 val producerAmount = producerListing.state.data.amount
                 val consumerAmount = consumerListing.state.data.amount
 
                 if (producerAmount == consumerAmount) {
                     match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
                     matchings.add(match)
-
-                    producerStateIterator++
-                    consumerStateIterator++
                 } else if (producerAmount > consumerAmount) {
                     // Split Producer Listing State
                     val remainderAmount = producerAmount - consumerAmount
@@ -187,13 +181,9 @@ object MatchingFlow {
 
                     // Add left over energy state to the producers list
                     // maybe another elegant solution?
-                    producerStates.add(
-                        index = producerStateIterator + 1,
-                        element = producerRemainingListingStateAndRef
-                    )
-
-                    producerStateIterator++
-                    consumerStateIterator++
+                    producerStateIterator.add(producerRemainingListingStateAndRef)
+                    // Jump to the previous vale to still iterate over the just added value
+                    producerStateIterator.previous()
                 } else if (producerAmount < consumerAmount) {
                     // Split Consumer Listing State
                     val remainderAmount = consumerAmount - producerAmount
@@ -223,20 +213,16 @@ object MatchingFlow {
 
                     // Add left over energy state to the consumers list
                     // maybe another elegant solution?
-                    consumerStates.add(
-                        index = consumerStateIterator + 1,
-                        element = consumerRemainingListingStateAndRef
-                    )
-
-                    producerStateIterator++
-                    consumerStateIterator++
+                    consumerStateIterator.add(consumerRemainingListingStateAndRef)
+                    // Jump to the previous vale to still iterate over the just added value
+                    consumerStateIterator.previous()
                 }
             }
             return when {
-                producerStates.size > producerStateIterator ->
-                    UnMatchedListings(producerStates, producerStateIterator)
-                consumerStates.size > consumerStateIterator ->
-                    UnMatchedListings(consumerStates, consumerStateIterator)
+                producerStateIterator.hasNext() ->
+                    UnMatchedListings(producerStates, producerStateIterator.nextIndex())
+                consumerStateIterator.hasNext() ->
+                    UnMatchedListings(consumerStates, consumerStateIterator.nextIndex())
                 else ->
                     UnMatchedListings(emptyList(), 0)
             }
