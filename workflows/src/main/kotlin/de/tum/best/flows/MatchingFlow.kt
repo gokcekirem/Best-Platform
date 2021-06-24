@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.flows.ListingFlowInitiator
 import com.template.states.ListingState
 import com.template.states.ListingTypes
+import com.template.states.MarketTimeState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault
@@ -214,13 +215,18 @@ object MatchingFlow {
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
+
+            val marketTimeStateAndRef = serviceHub.vaultService.queryBy<MarketTimeState>(
+                QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
+            ).states.single()
+
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
                     listingState.electricityType,
                     unitPrice,
                     listingState.amount,
                     ourIdentity,
-                    0,
+                    marketTimeStateAndRef.state.data.globalCounter,
                     if (listingState.listingType == ListingTypes.ProducerListing)
                         ListingTypes.ConsumerListing
                     else ListingTypes.ProducerListing
