@@ -4,6 +4,7 @@ import com.template.states.ListingState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
 import net.corda.core.contracts.requireSingleCommand
+import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
 
 // ************
@@ -47,7 +48,7 @@ class ListingContract : Contract{
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
 
-        val results = serviceHub.vaultService.queryBy<ContractState>(criteria)
+//        val results = serviceHub.vaultService.queryBy<ContractState>(criteria)
         for(listing in listings){
             // Requirements
             requireThat{
