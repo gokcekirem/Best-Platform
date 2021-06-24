@@ -4,10 +4,8 @@ import co.paralleluniverse.fibers.Suspendable
 import com.template.contracts.ListingContract
 import com.template.states.ListingState
 import de.tum.best.contracts.MatchingContract
-import de.tum.best.states.MatchingState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
@@ -16,7 +14,7 @@ import net.corda.core.utilities.ProgressTracker
 object SplitListingStateFlow {
 
     class Initiator(
-        val ListingStateAndRef: StateAndRef<ListingState>,
+        val listingStateAndRef: StateAndRef<ListingState>,
         val requiredAmount: Int,
         val remainderAmount: Int,
         override val progressTracker: ProgressTracker
@@ -48,13 +46,13 @@ object SplitListingStateFlow {
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val requiredListingState = ListingStateAndRef.state.data.copy(amount = requiredAmount)
-            val leftOverListingState = ListingStateAndRef.state.data.copy(amount = remainderAmount)
+            val requiredListingState = listingStateAndRef.state.data.copy(amount = requiredAmount)
+            val leftOverListingState = listingStateAndRef.state.data.copy(amount = remainderAmount)
 
             //TODO Update Command Contract
             val txCommand = Command(ListingContract.Commands.SplitTx(), listOf(ourIdentity.owningKey))
             val txBuilder = TransactionBuilder(notary)
-                .addInputState(ListingStateAndRef)
+                .addInputState(listingStateAndRef)
                 .addOutputState(requiredListingState, MatchingContract.ID) //TODO Update Contract ID
                 .addOutputState(leftOverListingState, MatchingContract.ID) //TODO Update Contract ID
                 .addCommand(txCommand)

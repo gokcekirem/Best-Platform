@@ -111,7 +111,7 @@ object MatchingFlow {
 
             // Creates matches from client listings and adds them to the global matchings hashset
             // Returns un matched listings that should be matched to the retailer
-            val unMatchedListings = MatchListings(
+            val unMatchedListings = matchListings(
                 unitPrice!!,
                 producersStateAndRefs,
                 consumersStateAndRefs,
@@ -123,7 +123,7 @@ object MatchingFlow {
             // Create matches with the retailer
             if (unMatchedListings.listings.isNotEmpty()) {
                 for (i in unMatchedListings.currentIterator until unMatchedListings.listings.size) {
-                    MatchWithRetailer(unMatchedListings.listings[i], unitPrice)
+                    matchWithRetailer(unMatchedListings.listings[i], unitPrice)
                 }
             }
 
@@ -141,7 +141,7 @@ object MatchingFlow {
             }
         }
 
-        private fun MatchListings(
+        private fun matchListings(
             unitPrice: Int,
             producerStates: List<StateAndRef<ListingState>>,
             consumerStates: List<StateAndRef<ListingState>>,
@@ -172,7 +172,7 @@ object MatchingFlow {
                 match = Matching(unitPrice, pAmount, pListing, cListing)
                 matchings.add(match)
 
-                MatchListings(
+                matchListings(
                     unitPrice!!,
                     producerStates,
                     consumerStates,
@@ -214,7 +214,7 @@ object MatchingFlow {
                         StateRef(pRemListing.hash(), 0)
                     )
                 )
-                MatchListings(
+                matchListings(
                     unitPrice!!,
                     updatedProducerStates,
                     consumerStates,
@@ -258,7 +258,7 @@ object MatchingFlow {
                         StateRef(cRemListing.hash(), 0)
                     )
                 )
-                MatchListings(
+                matchListings(
                     unitPrice!!,
                     producerStates,
                     updatedConsumerStates,
@@ -271,8 +271,7 @@ object MatchingFlow {
             return UnMatchedListings(emptyList(), 0)
         }
 
-        private fun MatchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
-//            val listingType = unMatchedListings.listings.first<StateAndRef<ListingState>>().state.data.listingType
+        private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
             val match: Matching
             val retailerSignedTx: SignedTransaction
