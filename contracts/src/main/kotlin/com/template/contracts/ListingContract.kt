@@ -13,7 +13,7 @@ import net.corda.core.transactions.LedgerTransaction
 // Job of the contract is to verify that the corresponding "state" is legal.
 //
 // ************
-class ListingContract : Contract{
+class ListingContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
         const val ID = "com.template.contracts.ListingContract"
@@ -31,15 +31,21 @@ class ListingContract : Contract{
 
         // Step 3: Based on type of the command do verifications
         when (command.value) {
-            is Commands.ConsumerListing -> {
-                verifyConsumerListings(outputs)
-            }
-            is Commands.ProducerListing -> {
-                verifyProducerListings(outputs)
-            }
-            else -> {
-                throw IllegalArgumentException("Unknown command!")
-            }
+            is Commands.ConsumerListing -> verifyConsumerListings(outputs)
+            is Commands.ProducerListing -> verifyProducerListings(outputs)
+            is Commands.SplitTx -> verifySplitListing(tx, tx.inputsOfType(), outputs)
+            else -> throw IllegalArgumentException("Unknown command!")
+        }
+    }
+
+    private fun verifySplitListing(tx: LedgerTransaction, inputs: List<ListingState>, outputs: List<ListingState>) {
+        val inputListingState = inputs.single()
+        requireThat {
+            "Should have one input" using (tx.inputs.size == 1)
+            "Should have two outputs" using (tx.outputs.size == 2)
+
+            "Sum of output amounts should equal to input amounts" using
+                    (outputs.sumBy { it.amount } == inputListingState.amount)
         }
     }
 
@@ -49,9 +55,9 @@ class ListingContract : Contract{
         // in case somebody tries to create modified transactions the system should be able to handle all of them
 
 //        val results = serviceHub.vaultService.queryBy<ContractState>(criteria)
-        for(listing in listings){
+        for (listing in listings) {
             // Requirements
-            requireThat{
+            requireThat {
                 "Electricity type is incompatible with the listing type. It should be set to -1".using(listing.electricityType == -1)
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
@@ -64,9 +70,9 @@ class ListingContract : Contract{
     private fun verifyProducerListings(listings: List<ListingState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
-        for(listing in listings){
+        for (listing in listings) {
             // Requirements
-            requireThat{
+            requireThat {
                 "Electricity type is incompatible with the listing type. It should be set to >= 0".using(listing.electricityType >= 0)
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
@@ -79,8 +85,8 @@ class ListingContract : Contract{
     // If it is "ConsumerListing" then the listing should be interpreted as "want to buy" (created by a consumer)
     // If it is "producerListing" then the listing should be interpreted as "want to sell" (created by a producer)
     interface Commands : CommandData {
-        class ConsumerListing : Commands {}
-        class ProducerListing : Commands {}
-        class SplitTx : Commands {}
+        class ConsumerListing : Commands
+        class ProducerListing : Commands
+        class SplitTx : Commands
     }
 }

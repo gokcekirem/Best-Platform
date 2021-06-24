@@ -49,12 +49,11 @@ object SplitListingStateFlow {
             val requiredListingState = listingStateAndRef.state.data.copy(amount = requiredAmount)
             val leftOverListingState = listingStateAndRef.state.data.copy(amount = remainderAmount)
 
-            //TODO Update Command Contract
             val txCommand = Command(ListingContract.Commands.SplitTx(), listOf(ourIdentity.owningKey))
             val txBuilder = TransactionBuilder(notary)
                 .addInputState(listingStateAndRef)
-                .addOutputState(requiredListingState, MatchingContract.ID) //TODO Update Contract ID
-                .addOutputState(leftOverListingState, MatchingContract.ID) //TODO Update Contract ID
+                .addOutputState(requiredListingState, ListingContract.ID)
+                .addOutputState(leftOverListingState, ListingContract.ID)
                 .addCommand(txCommand)
 
             // Stage 2.
