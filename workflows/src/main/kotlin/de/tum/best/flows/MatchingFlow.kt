@@ -5,8 +5,6 @@ import com.template.flows.ListingFlowInitiator
 import com.template.states.ListingState
 import com.template.states.ListingTypes
 import net.corda.core.contracts.StateAndRef
-import net.corda.core.contracts.StateRef
-import net.corda.core.contracts.TransactionState
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
@@ -112,10 +110,8 @@ object MatchingFlow {
             // Returns un matched listings that should be matched to the retailer
             val unMatchedListings = matchListings(
                 unitPrice!!,
-                producersStateAndRefs,
-                consumersStateAndRefs,
-                producerStateIterator,
-                consumerStateIterator,
+                producersStateAndRefs.toMutableList(),
+                consumersStateAndRefs.toMutableList(),
                 SPLITING_STATE_FLOW.childProgressTracker()
             )
 
@@ -142,130 +138,108 @@ object MatchingFlow {
 
         private fun matchListings(
             unitPrice: Int,
-            producerStates: List<StateAndRef<ListingState>>,
-            consumerStates: List<StateAndRef<ListingState>>,
-            producerStateIterator: Int,
-            consumerStateIterator: Int,
+            producerStates: MutableList<StateAndRef<ListingState>>,
+            consumerStates: MutableList<StateAndRef<ListingState>>,
             progressTracker: ProgressTracker
         ): UnMatchedListings {
             //could possibly have 1 iterator with the current approach
+            var producerStateIterator = 0
+            var consumerStateIterator = 0
+            while (producerStateIterator != producerStates.size && consumerStateIterator != consumerStates.size) {
+                val match: Matching
 
-            if (producerStateIterator == producerStates.size || consumerStateIterator == consumerStates.size) {
-                if (producerStates.size > producerStateIterator) {
-                    return UnMatchedListings(producerStates, producerStateIterator)
-                } else if (consumerStates.size > consumerStateIterator) {
-                    return UnMatchedListings(consumerStates, consumerStateIterator)
-                } else {
-                    return UnMatchedListings(emptyList(), 0)
+                val producerListing = producerStates[producerStateIterator]
+                val consumerListing = consumerStates[consumerStateIterator]
+                val producerAmount = producerListing.state.data.amount
+                val consumerAmount = consumerListing.state.data.amount
+
+                if (producerAmount == consumerAmount) {
+                    match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
+                    matchings.add(match)
+
+                    producerStateIterator++
+                    consumerStateIterator++
+                } else if (producerAmount > consumerAmount) {
+                    // Split Producer Listing State
+                    val remainderAmount = producerAmount - consumerAmount
+                    val stx: SignedTransaction = subFlow(
+                        SplitListingStateFlow.Initiator(
+                            producerListing,
+                            consumerAmount,
+                            remainderAmount,
+                            progressTracker
+                        )
+                    )
+                    // Get the 2 newly created states
+                    val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
+                    val producerRequiredListingStateAndRef =
+                        splitListingsStateAndRef.single { it.state.data.amount == consumerAmount }
+                    val producerRemainingListingStateAndRef =
+                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+
+                    match = Matching(
+                        unitPrice,
+                        consumerAmount,
+                        producerRequiredListingStateAndRef,
+                        consumerListing
+                    )
+                    matchings.add(match)
+
+                    // Add left over energy state to the producers list
+                    // maybe another elegant solution?
+                    producerStates.add(
+                        index = producerStateIterator + 1,
+                        element = producerRemainingListingStateAndRef
+                    )
+
+                    producerStateIterator++
+                    consumerStateIterator++
+                } else if (producerAmount < consumerAmount) {
+                    // Split Consumer Listing State
+                    val remainderAmount = consumerAmount - producerAmount
+                    val stx: SignedTransaction = subFlow(
+                        SplitListingStateFlow.Initiator(
+                            consumerListing,
+                            producerAmount,
+                            remainderAmount,
+                            progressTracker
+                        )
+                    )
+                    // Get the 2 newly created states
+                    val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
+                    val consumerRequiredListingStateAndRef =
+                        splitListingsStateAndRef.single { it.state.data.amount == producerAmount }
+                    val consumerRemainingListingStateAndRef =
+                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+
+                    // Create and add match to matching list
+                    match = Matching(
+                        unitPrice,
+                        producerAmount,
+                        producerListing,
+                        consumerRequiredListingStateAndRef
+                    )
+                    matchings.add(match)
+
+                    // Add left over energy state to the consumers list
+                    // maybe another elegant solution?
+                    consumerStates.add(
+                        index = consumerStateIterator + 1,
+                        element = consumerRemainingListingStateAndRef
+                    )
+
+                    producerStateIterator++
+                    consumerStateIterator++
                 }
             }
-
-            val match: Matching
-
-            val producerListing = producerStates[producerStateIterator]
-            val consumerListing = consumerStates[consumerStateIterator]
-            val producerAmount = producerListing.state.data.amount
-            val consumerAmount = consumerListing.state.data.amount
-
-            if (producerAmount == consumerAmount) {
-                match = Matching(unitPrice, producerAmount, producerListing, consumerListing)
-                matchings.add(match)
-
-                matchListings(
-                    unitPrice,
-                    producerStates,
-                    consumerStates,
-                    producerStateIterator + 1,
-                    consumerStateIterator + 1,
-                    progressTracker
-                )
-            } else if (producerAmount > consumerAmount) {
-                // Split Producer Listing State
-                val remainderAmount = producerAmount - consumerAmount
-                val stx: SignedTransaction = subFlow(
-                    SplitListingStateFlow.Initiator(
-                        producerListing,
-                        consumerAmount,
-                        remainderAmount,
-                        progressTracker
-                    )
-                )
-                // Get the 2 newly created states
-                val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-                val producerRequiredListingStateAndRef =
-                    splitListingsStateAndRef.single { it.state.data.amount == consumerAmount }
-                val producerRemainingListingStateAndRef =
-                    splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
-
-                match = Matching(
-                    unitPrice,
-                    consumerAmount,
-                    producerRequiredListingStateAndRef,
-                    consumerListing
-                )
-                matchings.add(match)
-
-                val updatedProducerStates = producerStates.toMutableList()
-                // Add left over energy state to the producers list
-                // maybe another elegant solution?
-                updatedProducerStates.add(
-                    index = producerStateIterator + 1,
-                    element = producerRemainingListingStateAndRef
-                )
-                matchListings(
-                    unitPrice,
-                    updatedProducerStates,
-                    consumerStates,
-                    producerStateIterator + 1,
-                    consumerStateIterator + 1,
-                    progressTracker
-                )
-
-            } else if (producerAmount < consumerAmount) {
-                // Split Consumer Listing State
-                val remainderAmount = consumerAmount - producerAmount
-                val stx: SignedTransaction = subFlow(
-                    SplitListingStateFlow.Initiator(
-                        consumerListing,
-                        producerAmount,
-                        remainderAmount,
-                        progressTracker
-                    )
-                )
-                // Get the 2 newly created states
-                val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-                val consumerRequiredListingStateAndRef =
-                    splitListingsStateAndRef.single { it.state.data.amount == producerAmount }
-                val consumerRemainingListingStateAndRef =
-                    splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
-
-                // Create and add match to matching list
-                match = Matching(
-                    unitPrice,
-                    producerAmount,
-                    producerListing,
-                    consumerRequiredListingStateAndRef
-                )
-                matchings.add(match)
-
-                val updatedConsumerStates = consumerStates.toMutableList()
-                // Add left over energy state to the consumers list
-                // maybe another elegant solution?
-                updatedConsumerStates.add(
-                    index = consumerStateIterator + 1,
-                    element = consumerRemainingListingStateAndRef
-                )
-                matchListings(
-                    unitPrice,
-                    producerStates,
-                    updatedConsumerStates,
-                    producerStateIterator + 1,
-                    consumerStateIterator + 1,
-                    progressTracker
-                )
-
+            return when {
+                producerStates.size > producerStateIterator ->
+                    UnMatchedListings(producerStates, producerStateIterator)
+                consumerStates.size > consumerStateIterator ->
+                    UnMatchedListings(consumerStates, consumerStateIterator)
+                else ->
+                    UnMatchedListings(emptyList(), 0)
             }
-            return UnMatchedListings(emptyList(), 0)
         }
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
