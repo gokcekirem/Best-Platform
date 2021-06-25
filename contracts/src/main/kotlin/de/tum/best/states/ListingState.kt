@@ -6,7 +6,7 @@ import net.corda.core.contracts.ContractState
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 /**
-* Listing State *
+* *Listing State*
 
 *This class is for the "Listing" object in best-marketplace. This class ONLY DENOTES an object,
 *functionality is implemented in the corresponding flow and the contract. They type of the Listing
