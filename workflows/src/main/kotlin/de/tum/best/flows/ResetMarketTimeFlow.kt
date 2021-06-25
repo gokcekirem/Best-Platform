@@ -1,8 +1,8 @@
-package com.template
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import com.template.contracts.MarketTimeContract
-import com.template.states.MarketTimeState
+import de.tum.best.contracts.MarketTimeContract
+import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
@@ -73,7 +73,7 @@ object ResetMarketTimeFlow {
             val inputStateAndRef = marketTimeStateAndRefs.last()
             val inputState = inputStateAndRef.state.data
 
-            val outputState = MarketTimeState(inputState.globalCounter+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            val outputState = MarketTimeState(inputState.marketClock+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
@@ -100,12 +100,16 @@ object ResetMarketTimeFlow {
             progressTracker.currentStep = GATHERINGSIGS
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(otherParty)
-            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession), GATHERINGSIGS.childProgressTracker()))
+            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession),
+                GATHERINGSIGS.childProgressTracker()
+            ))
 
             // Stage 5.
             progressTracker.currentStep = FINALISINGTRANSACTION
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession), FINALISINGTRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession),
+                FINALISINGTRANSACTION.childProgressTracker()
+            ))
         }
     }
 
@@ -124,7 +128,7 @@ object ResetMarketTimeFlow {
                     "The MarketTime value after Reset must be equal to 0" using (marketT.marketTime == 0 )
                     //A MarketTime Value other than 0 should not be possible since this is the Reset flow
 
-                    "globalCounter value in the output State must be 1 unit greater than the one in the input state" using(marketT.globalCounter == inputmarketT.globalCounter + 1)
+                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(marketT.marketClock == inputmarketT.marketClock + 1)
 
                 }
             }

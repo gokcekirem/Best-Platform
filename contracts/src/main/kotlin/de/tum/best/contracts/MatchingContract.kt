@@ -1,7 +1,7 @@
 package de.tum.best.contracts
 
-import com.template.states.ListingState
-import com.template.states.ListingTypes
+import de.tum.best.states.ListingState
+import de.tum.best.states.ListingTypes
 import de.tum.best.states.MatchingState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
@@ -15,7 +15,7 @@ class MatchingContract : Contract {
 
     companion object {
         // Used to identify our contract when building a transaction.
-        const val ID = "com.template.contracts.MatchingContract"
+        const val ID = "de.tum.best.contracts.MatchingContract"
     }
 
 

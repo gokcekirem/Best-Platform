@@ -1,14 +1,11 @@
-package com.template.states
+package de.tum.best.states
 
-import com.template.contracts.MarketTimeContract
+import de.tum.best.contracts.MarketTimeContract
 import net.corda.core.contracts.BelongsToContract
-import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.LinearState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
-import net.corda.core.schemas.QueryableState
-import java.util.*
 
 
 /**
@@ -22,7 +19,7 @@ import java.util.*
 
 @BelongsToContract(MarketTimeContract::class)
 class MarketTimeState (
-    val globalCounter: Int,
+    val marketClock: Int,
     val marketTime: Int,
     val sender: Party,
     val receiver: Party,
