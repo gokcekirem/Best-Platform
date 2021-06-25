@@ -157,14 +157,8 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
         ).states.single().state.data.marketTime
 
         //Get listing object from the signed transaction
-        val stxClocks = stx.tx.outputsOfType<ListingState>()
-
-        //Perform check for all listings in the transaction
-        for(lstng in stxClocks){
-            if(timeQuery != lstng.marketClock){
-                return false
-            }
-        }
-        return true
+        return stx.tx.outputsOfType<ListingState>()
+            //Perform check for all listings in the transaction
+            .all {  it.marketClock == timeQuery }
     }
 }
