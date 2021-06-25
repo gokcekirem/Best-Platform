@@ -215,10 +215,7 @@ object MatchingFlow {
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
-
-            val marketTimeStateAndRef = serviceHub.vaultService.queryBy<MarketTimeState>(
-                QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
-            ).states.single()
+            val selectedListingType = if(listingState.listingType == ListingTypes.ProducerListing) 1 else 0
 
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
@@ -226,10 +223,7 @@ object MatchingFlow {
                     unitPrice,
                     listingState.amount,
                     ourIdentity,
-                    marketTimeStateAndRef.state.data.marketClock,
-                    if (listingState.listingType == ListingTypes.ProducerListing)
-                        ListingTypes.ConsumerListing
-                    else ListingTypes.ProducerListing
+                    selectedListingType
                 )
             )
             val retailerStateAndRef =
