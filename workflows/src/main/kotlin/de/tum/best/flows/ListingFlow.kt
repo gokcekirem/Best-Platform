@@ -49,21 +49,43 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val marketClock: Int,
                            private val transactionType: ListingTypes
 ): FlowLogic<SignedTransaction>() {
-    override val progressTracker = ProgressTracker()
+
+    companion object {
+        object STEP_ID : ProgressTracker.Step("1. Fetching our identity")
+        object STEP_NOTARY : ProgressTracker.Step("2. Fetching notaries")
+        object STEP_TYPE : ProgressTracker.Step("3. Determining the listing type")
+        object STEP_VERIFY_AND_SIGN : ProgressTracker.Step("4. Verifying and signing")
+        object STEP_COLLECT_SIG : ProgressTracker.Step("5. Collecting other parties signatures")
+        object STEP_FINALIZE : ProgressTracker.Step("6. Finalizing transaction")
+
+        fun tracker() = ProgressTracker(
+            STEP_ID,
+            STEP_NOTARY,
+            STEP_TYPE,
+            STEP_VERIFY_AND_SIGN,
+            STEP_COLLECT_SIG,
+            STEP_FINALIZE
+        )
+    }
+
+    override val progressTracker = tracker()
 
     override fun call(): SignedTransaction {
 
         // 1.Step: Fetch our address
+        progressTracker.currentStep = STEP_ID
         val sender: Party = ourIdentity
 
         // 2.Step: Get a reference to the notary service on our network and our key pair.
         // Note: ongoing work to support multiple notary identities is still in progress.
         // TODO : Look for a more elegant way
+        progressTracker.currentStep = STEP_NOTARY
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
         
         val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
+        progressTracker.currentStep = STEP_TYPE
         if(transactionType == ListingTypes.ProducerListing){
             // Transaction is of type ProducerListing
             listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
@@ -75,11 +97,13 @@ class ListingFlowInitiator(private val electricityType: Int,
         listingBuilder.addOutputState(listing)
 
         // 4.Step: Verify and Sign
+        progressTracker.currentStep = STEP_VERIFY_AND_SIGN
         listingBuilder.verify(serviceHub)
         val partiallySignedListingTx = serviceHub.signInitialTransaction(listingBuilder)
 
         // 5.Step: Collect the other party's signature using the SignTransactionFlow.
         // TODO: Understand!
+        progressTracker.currentStep = STEP_COLLECT_SIG
         val otherParties: MutableList<Party> = listing.participants.stream().map { el: AbstractParty? -> el as Party? }.collect(Collectors.toList())
         otherParties.remove(ourIdentity)
         val sessions = otherParties.stream().map { el: Party? -> initiateFlow(el!!) }.collect(Collectors.toList())
@@ -88,6 +112,7 @@ class ListingFlowInitiator(private val electricityType: Int,
 
         // 6.Step: Assuming no exceptions, we can now finalise the transaction
         // TODO: Understand!
+        progressTracker.currentStep = STEP_FINALIZE
         return subFlow<SignedTransaction>(FinalityFlow(signedListingTx, sessions))
     }
 }
@@ -97,7 +122,7 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
     @Suspendable
     override fun call(): SignedTransaction {
         // 1.Step: Check if we are a matching node
-        val isMatchingNode: Boolean =  if (ourIdentity.name.toString() != null) ourIdentity.name.toString().contains("Matching", ignoreCase = true) else false
+        val isMatchingNode: Boolean =  ourIdentity.name.toString().contains("Matching", ignoreCase = true)
 
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {

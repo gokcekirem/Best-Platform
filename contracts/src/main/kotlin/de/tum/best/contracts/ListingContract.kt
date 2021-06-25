@@ -7,12 +7,11 @@ import net.corda.core.contracts.requireSingleCommand
 import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
 
-// ************
-// * Listing Contract *
-//
-// Job of the contract is to verify that the corresponding "state" is legal.
-//
-// ************
+/**
+ * Listing Contract *
+
+ *Job of the contract is to verify that the corresponding "state" is legal.
+*/
 class ListingContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
@@ -49,7 +48,7 @@ class ListingContract : Contract {
         }
     }
 
-    // Helper function in order to verify listings of type ConsumerListing
+    /** Helper function in order to verify listings of type ConsumerListing */
     private fun verifyConsumerListings(listings: List<ListingState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
@@ -66,7 +65,7 @@ class ListingContract : Contract {
         }
     }
 
-    // Helper function in order to verify listings of type ProducerListing
+    /** Helper function in order to verify listings of type ProducerListing */
     private fun verifyProducerListings(listings: List<ListingState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
