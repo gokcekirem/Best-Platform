@@ -7,12 +7,11 @@ import net.corda.core.contracts.requireSingleCommand
 import net.corda.core.contracts.requireThat
 import net.corda.core.transactions.LedgerTransaction
 
-// ************
-// * Listing Contract *
-//
-// Job of the contract is to verify that the corresponding "state" is legal.
-//
-// ************
+/**
+ * Listing Contract *
+
+ *Job of the contract is to verify that the corresponding "state" is legal.
+*/
 class ListingContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
@@ -49,7 +48,7 @@ class ListingContract : Contract {
         }
     }
 
-    // Helper function in order to verify listings of type ConsumerListing
+    /** Helper function in order to verify listings of type ConsumerListing */
     private fun verifyConsumerListings(listings: List<ListingState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
@@ -61,12 +60,12 @@ class ListingContract : Contract {
                 "Electricity type is incompatible with the listing type. It should be set to -1".using(listing.electricityType == -1)
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
-                //TODO Market clock check, price upperbound check, sender check, matching node check
+                "Market clock should be valid".using(listing.marketClock >= 0)
             }
         }
     }
 
-    // Helper function in order to verify listings of type ProducerListing
+    /** Helper function in order to verify listings of type ProducerListing */
     private fun verifyProducerListings(listings: List<ListingState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
@@ -76,7 +75,7 @@ class ListingContract : Contract {
                 "Electricity type is incompatible with the listing type. It should be set to >= 0".using(listing.electricityType >= 0)
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
-                //TODO Market time check, price upperbound check, sender check, matching node check
+                "Market clock should be valid".using(listing.marketClock >= 0)
             }
         }
     }
