@@ -13,6 +13,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import org.apache.commons.lang3.ObjectUtils
 
 class GetMarketTimeFlow {
     @InitiatingFlow
@@ -65,12 +66,28 @@ class GetMarketTimeFlow {
                 null,
                 null)
 
+            //Logic:
+            //receive the MarketTime from the matching node, called receivedState
+            //if vaultState is empty, no input, outputState=receivedState
+            //else outputState=receivedState, inputState=vaultState
+
             val marketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
-            val inputStateAndRef = marketTimeStateAndRefs[0]
-            val inputState = inputStateAndRef.state.data
+            val vaultStateAndRef = marketTimeStateAndRefs[0]
+            var vaultState:MarketTimeState
+
+            try {
+                // assuming the MarketTime object already exists
+                vaultState = vaultStateAndRef.state.data
+
+            } catch (e: NoSuchElementException) {
+                // handler, initial MarketTime creation with MarketClock=0, MarketTime=1
+                vaultState = MarketTimeState(0,1, serviceHub.myInfo.legalIdentities.first(), otherParty)
+            }
 
             // no updates, just fetch the Market Time state, override issue?
-            val outputState = inputState
+            val outputState = vaultState
+
+
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
@@ -78,7 +95,7 @@ class GetMarketTimeFlow {
             // Generate an unsigned transaction.
 
             val txCommand = Command(MarketTimeContract.Commands.GetMarketTime(),outputState.participants.map { it.owningKey })
-            val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
+            val txBuilder = TransactionBuilder(notary).addInputState(vaultStateAndRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
 
@@ -115,12 +132,8 @@ class GetMarketTimeFlow {
         override fun call(): SignedTransaction {
             val signTransactionFlow = object : SignTransactionFlow(otherPartySession) {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                    val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
-                    // MarketTime state should be the unchanged
-                    val input = stx.inputs.filterIsInstance<MarketTimeState>().single()
-                    "MarketTime values must be equal." using (output.marketTime == input.marketTime)
-                    "MarketClock values must be equal." using (output.marketClock == input.marketClock)
+                    //vaultState and outputState must be equal
 
                 }
             }
