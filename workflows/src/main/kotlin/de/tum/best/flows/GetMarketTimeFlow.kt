@@ -61,19 +61,31 @@ class GetMarketTimeFlow {
             // to fetch the desired MarketTimeState state from the vault and get the last state (unconsumed input State).
             // This filtered state would be used as input to the transaction.
 
-            val queryCriteria = QueryCriteria.VaultQueryCriteria(
-                Vault.StateStatus.UNCONSUMED,
-                null,
-                null)
+            val queryCriteria = QueryCriteria.VaultQueryCriteria() //Default is UNCONSUMED
 
             //Logic:
             //receive the MarketTime from the matching node, called receivedState
             //if vaultState is empty, no input, outputState=receivedState
             //else outputState=receivedState, inputState=vaultState
 
-            val marketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
-            val vaultStateAndRef = marketTimeStateAndRefs[0]
-            var vaultState:MarketTimeState
+            val issuerMarketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
+
+            //Input StateandRefs of the Issuer Node, according to its subjective view of the ledger (individual vault)
+
+            val vaultStateAndRef = issuerMarketTimeStateAndRefs[0]
+            //var vaultState:MarketTimeState
+
+            if (!(vaultStateAndRef.state.data is MarketTimeState)) {
+
+                //Case 0: The Issuer Node doesnt have any MarketTime state in its vault.
+            val criteria = QueryCriteria.VaultQueryCriteria()
+            }
+            //Case 1.0: The MarketTime state in the vault of the Issuer Node isn't actual.
+
+            //Case 1.1: The MarketTime state in the vault of the Issuer Node is actual.
+
+
+            /**
 
             try {
                 // assuming the MarketTime object already exists
@@ -87,7 +99,7 @@ class GetMarketTimeFlow {
             // no updates, just fetch the Market Time state, override issue?
             val outputState = vaultState
 
-
+            **/
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
