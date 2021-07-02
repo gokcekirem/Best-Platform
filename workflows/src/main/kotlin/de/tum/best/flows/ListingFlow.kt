@@ -51,7 +51,7 @@ class ListingFlowInitiator(private val electricityType: Int,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
-                           private val transactionType: Int
+                           private val transactionType: ListingType
 ): FlowLogic<SignedTransaction>() {
 
     companion object {
@@ -100,13 +100,12 @@ class ListingFlowInitiator(private val electricityType: Int,
         val marketClock = marketClockQuery.marketTime
 
         progressTracker.currentStep = STEP_TYPE
-        val selectedListingType = if(transactionType == 0) ListingType.ConsumerListing else ListingType.ProducerListing
         val selectedPreference = if(electricityPreference == 1) ElectricityType.Renewable else if(electricityPreference == 2) ElectricityType.NonRenewable else ElectricityType.None
 
-        val listing = ListingState(selectedListingType, electricityType, selectedPreference, unitPrice, amount, sender, matcher, marketClock)
+        val listing = ListingState(transactionType, electricityType, selectedPreference, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(selectedListingType == ListingType.ProducerListing){
+        if(transactionType == ListingType.ProducerListing){
             // Transaction is of type ProducerListing
             listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
         } else {
