@@ -16,6 +16,7 @@ import net.corda.core.flows.FlowSession
 import net.corda.core.identity.Party
 
 import de.tum.best.contracts.ListingContract
+import de.tum.best.states.ElectricityTypes
 
 import net.corda.core.transactions.TransactionBuilder
 
@@ -36,7 +37,8 @@ import net.corda.core.node.services.vault.QueryCriteria
 /**
  * ListingFlowInitiator initiator is used in order to start the listing creation process
 
- *@param electricityType Type of the electricity (renewable, traditional, ...)
+ *@param electricityType Type of the electricity produced (renewable, traditional, ...)
+ *@param electricityPreference Type of the electricity preferred by consumer (renewable, traditional, none...)
  *@param unitPrice Price of one unit of electricity
  *@param amount The amount of electricity this transaction is for
  *@param matcher ID of the matching service node
@@ -45,6 +47,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 @InitiatingFlow
 @StartableByRPC
 class ListingFlowInitiator(private val electricityType: Int,
+                           private val electricityPreference: Int,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
@@ -98,8 +101,9 @@ class ListingFlowInitiator(private val electricityType: Int,
 
         progressTracker.currentStep = STEP_TYPE
         val selectedListingType = if(transactionType == 0) ListingTypes.ConsumerListing else ListingTypes.ProducerListing
+        val selectedPreference = if(electricityPreference == 1) ElectricityTypes.Renewable else if(electricityPreference == 2) ElectricityTypes.NonRenewable else ElectricityTypes.None
 
-        val listing = ListingState(selectedListingType, electricityType, unitPrice, amount, sender, matcher, marketClock)
+        val listing = ListingState(selectedListingType, electricityType, selectedPreference, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
         if(selectedListingType == ListingTypes.ProducerListing){
