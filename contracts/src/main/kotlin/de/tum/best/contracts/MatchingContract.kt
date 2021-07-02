@@ -1,7 +1,7 @@
 package de.tum.best.contracts
 
 import de.tum.best.states.ListingState
-import de.tum.best.states.ListingTypes
+import de.tum.best.states.ListingType
 import de.tum.best.states.MatchingState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
@@ -40,12 +40,12 @@ class MatchingContract : Contract {
 
             for(listingState in listingStates) {
                 when (listingState.listingType) {
-                    ListingTypes.ProducerListing -> {
+                    ListingType.ProducerListing -> {
                         "Seller should be the producer" using (listingState.sender == matchingState.seller)
                         // producer set the minimum price he can sell at
                         "Matched price to be greater then or equal to ask price" using (listingState.unitPrice <= matchingState.unitPrice)
                     }
-                    ListingTypes.ConsumerListing -> {
+                    ListingType.ConsumerListing -> {
                         "Buyer should be the consumer" using (listingState.sender == matchingState.buyer)
                         // consumer set the maximum price he can buy at
                         "Matched price to be less then or equal to bid price" using (listingState.unitPrice >= matchingState.unitPrice)

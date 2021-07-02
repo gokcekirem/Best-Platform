@@ -1,10 +1,9 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
-import de.tum.best.states.ElectricityTypes
+import de.tum.best.states.ElectricityType
 import de.tum.best.states.ListingState
-import de.tum.best.states.ListingTypes
-import de.tum.best.states.MarketTimeState
+import de.tum.best.states.ListingType
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault
@@ -64,14 +63,14 @@ object MatchingFlow {
 //                }
 
             val producersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingTypes.ProducerListing }
+                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ProducerListing }
             val consumersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingTypes.ConsumerListing }
+                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
             // Iterate over consumer/producer preferences
             // Calculate merit order price for each preference
             // Create matchings accordingly
-            for (electricityPreference in ElectricityTypes.values()){
+            for (electricityPreference in ElectricityType.values()){
 
                 val producersByPreference = producersStateAndRefs.filter{it.state.data.electricityPreference == electricityPreference}
                 val consumersByPreference = consumersStateAndRefs.filter{it.state.data.electricityPreference == electricityPreference}
@@ -226,10 +225,10 @@ object MatchingFlow {
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val retailerElectricityPreference = 0 // None
             val listingState = listingStateAndRef.state.data
-            val selectedListingType = if (listingState.listingType == ListingTypes.ProducerListing) 1 else 0
+            val selectedListingType = if (listingState.listingType == ListingType.ProducerListing) 1 else 0
 
             // Penalty awarded to un-matched listings
-            val unitPenalty = if (listingState.listingType == ListingTypes.ProducerListing) -2  else 2
+            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2  else 2
 
 
             // Create new listing for the retailer
@@ -251,10 +250,10 @@ object MatchingFlow {
                     Matching(
                         unitPrice + unitPenalty,
                         listingState.amount,
-                        if (listingState.listingType == ListingTypes.ProducerListing)
+                        if (listingState.listingType == ListingType.ProducerListing)
                             listingStateAndRef
                         else retailerStateAndRef,
-                        if (listingState.listingType == ListingTypes.ProducerListing)
+                        if (listingState.listingType == ListingType.ProducerListing)
                             retailerStateAndRef
                         else listingStateAndRef
                     )

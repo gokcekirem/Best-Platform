@@ -22,9 +22,9 @@ import net.corda.core.identity.Party
 */
 @BelongsToContract(ListingContract::class)
 data class ListingState(
-    val listingType: ListingTypes,
+    val listingType: ListingType,
     val electricityType: Int,
-    val electricityPreference: ElectricityTypes,
+    val electricityPreference: ElectricityType,
     val unitPrice: Int,
     val amount: Int,
     val sender: Party,
@@ -33,10 +33,10 @@ data class ListingState(
     override val participants: List<AbstractParty> = listOf(sender, matcher)
 ) : ContractState
 
-enum class ListingTypes {
+enum class ListingType {
     ProducerListing, ConsumerListing
 }
 
-enum class ElectricityTypes {
+enum class ElectricityType {
     Renewable, NonRenewable, None
 }

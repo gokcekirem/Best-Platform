@@ -16,12 +16,12 @@ import net.corda.core.flows.FlowSession
 import net.corda.core.identity.Party
 
 import de.tum.best.contracts.ListingContract
-import de.tum.best.states.ElectricityTypes
+import de.tum.best.states.ElectricityType
 
 import net.corda.core.transactions.TransactionBuilder
 
 import de.tum.best.states.ListingState
-import de.tum.best.states.ListingTypes
+import de.tum.best.states.ListingType
 import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.requireThat
 import net.corda.core.identity.AbstractParty
@@ -88,7 +88,7 @@ class ListingFlowInitiator(private val electricityType: Int,
         progressTracker.currentStep = STEP_NOTARY
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
-        // 3. Step: Conversion to ListingTypes enum and listing creation & market clock fetch
+        // 3. Step: Conversion to ListingType enum and listing creation & market clock fetch
         progressTracker.currentStep = STEP_CLOCK
 
         //TODO: We need a flow to fetch current market time, that flow will be called here
@@ -100,13 +100,13 @@ class ListingFlowInitiator(private val electricityType: Int,
         val marketClock = marketClockQuery.marketTime
 
         progressTracker.currentStep = STEP_TYPE
-        val selectedListingType = if(transactionType == 0) ListingTypes.ConsumerListing else ListingTypes.ProducerListing
-        val selectedPreference = if(electricityPreference == 1) ElectricityTypes.Renewable else if(electricityPreference == 2) ElectricityTypes.NonRenewable else ElectricityTypes.None
+        val selectedListingType = if(transactionType == 0) ListingType.ConsumerListing else ListingType.ProducerListing
+        val selectedPreference = if(electricityPreference == 1) ElectricityType.Renewable else if(electricityPreference == 2) ElectricityType.NonRenewable else ElectricityType.None
 
         val listing = ListingState(selectedListingType, electricityType, selectedPreference, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(selectedListingType == ListingTypes.ProducerListing){
+        if(selectedListingType == ListingType.ProducerListing){
             // Transaction is of type ProducerListing
             listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
         } else {
