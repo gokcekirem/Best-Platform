@@ -228,11 +228,15 @@ object MatchingFlow {
             val listingState = listingStateAndRef.state.data
             val selectedListingType = if(listingState.listingType == ListingTypes.ProducerListing) 1 else 0
 
+            // Penalty awarded to un-matched listings
+            val unitPenalty = 2
+
+            // Create new listing for the retailer
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
                     listingState.electricityType, //TODO shouldn't retailers electricity type be set to either traditional or none(if consumer listing)?
                     retailerElectricityPreference,
-                    unitPrice,
+                    unitPrice + unitPenalty,
                     listingState.amount,
                     ourIdentity,
                     selectedListingType
@@ -244,7 +248,7 @@ object MatchingFlow {
             matchings.apply {
                 add(
                     Matching(
-                        unitPrice,
+                        unitPrice + unitPenalty,
                         listingState.amount,
                         if (listingState.listingType == ListingTypes.ProducerListing)
                             listingStateAndRef
