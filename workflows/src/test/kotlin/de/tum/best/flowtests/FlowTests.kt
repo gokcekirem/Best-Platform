@@ -1,23 +1,23 @@
 package de.tum.best.flowtests
 
 import de.tum.best.flows.ClearMarketTimeFlow
+import net.corda.core.identity.CordaX500Name
 import net.corda.core.utilities.getOrThrow
+import net.corda.testing.common.internal.testNetworkParameters
 import net.corda.testing.core.singleIdentity
-import net.corda.testing.node.MockNetwork
-import net.corda.testing.node.MockNetworkParameters
-import net.corda.testing.node.StartedMockNode
-import net.corda.testing.node.TestCordapp
+import net.corda.testing.internal.chooseIdentityAndCert
+import net.corda.testing.node.*
 import org.junit.After
+import org.junit.AfterClass
 import org.junit.Before
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.BeforeClass
+import org.junit.jupiter.api.*
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 
 
-class ClearMarketTimeFlowTests {
-    private lateinit var network: MockNetwork
+class InitiateMarketTimeFlowTests {
+     private lateinit var network: MockNetwork
     private lateinit var a: StartedMockNode
     private lateinit var b: StartedMockNode
 
@@ -29,14 +29,16 @@ class ClearMarketTimeFlowTests {
                     TestCordapp.findCordapp("de.tum.best.flows"),
                     TestCordapp.findCordapp("de.tum.best.contracts")
 
-                )
+
+                ),notarySpecs = listOf(MockNetworkNotarySpec(CordaX500Name("Notary","London","GB")))
             )
         )
 
-        a = network.createPartyNode()
-        b = network.createPartyNode()
+        a = network.createNode(MockNodeParameters())
+        b = network.createNode(MockNodeParameters())
+        val startedNodes = arrayListOf(a, b)
         // For real nodes this happens automatically, but we have to manually register the flow for tests.
-        listOf(a, b).forEach { it.registerInitiatedFlow(ClearMarketTimeFlow.Responder::class.java) }
+        startedNodes.forEach { it.registerInitiatedFlow(ClearMarketTimeFlow.Responder::class.java) }
         network.runNetwork()
     }
 
