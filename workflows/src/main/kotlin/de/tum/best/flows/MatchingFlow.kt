@@ -226,10 +226,11 @@ object MatchingFlow {
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val retailerElectricityPreference = 0 // None
             val listingState = listingStateAndRef.state.data
-            val selectedListingType = if(listingState.listingType == ListingTypes.ProducerListing) 1 else 0
+            val selectedListingType = if (listingState.listingType == ListingTypes.ProducerListing) 1 else 0
 
             // Penalty awarded to un-matched listings
-            val unitPenalty = 2
+            val unitPenalty = if (listingState.listingType == ListingTypes.ProducerListing) -2  else 2
+
 
             // Create new listing for the retailer
             val retailerSignedTx = subFlow(
