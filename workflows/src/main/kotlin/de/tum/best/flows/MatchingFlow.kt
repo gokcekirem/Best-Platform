@@ -222,7 +222,9 @@ object MatchingFlow {
                     unitPrice,
                     listingState.amount,
                     ourIdentity,
-                    listingState.listingType
+                    if (listingState.listingType == ListingTypes.ProducerListing)
+                        ListingTypes.ConsumerListing
+                    else ListingTypes.ProducerListing
                 )
             )
             val retailerStateAndRef =
