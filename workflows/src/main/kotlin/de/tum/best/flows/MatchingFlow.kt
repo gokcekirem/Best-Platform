@@ -62,18 +62,19 @@ object MatchingFlow {
 //                    it.state.data
 //                }
 
-            val producersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ProducerListing }
-            val consumersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ConsumerListing }
+//            val producersStateAndRefs =
+//                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ProducerListing }
+//            val consumersStateAndRefs =
+//                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
             // Iterate over consumer/producer preferences
             // Calculate merit order price for each preference
             // Create matchings accordingly
             for (electricityPreference in ElectricityType.values()){
 
-                val producersByPreference = producersStateAndRefs.filter{it.state.data.electricityPreference == electricityPreference}
-                val consumersByPreference = consumersStateAndRefs.filter{it.state.data.electricityPreference == electricityPreference}
+                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityPreference == electricityPreference }
+                val producersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
+                val consumersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
                 val producerStates = producersByPreference.map { it.state.data }
                 val consumerStates = consumersByPreference.map { it.state.data }
@@ -83,13 +84,14 @@ object MatchingFlow {
                 val consumerEnergySum = consumerStates.map { it.amount }.sum()
                 val producerEnergySum = producerStates.map { it.amount }.sum()
                 val participatingProducerStates: List<ListingState>
+                val sortedProducerStates : List<ListingState>
 
                 // Calculate the Merit Order Price
                 val unitPrice = if (consumerEnergySum > producerEnergySum) {
                     producerStates.map { it.unitPrice }.max()
                         ?: throw IllegalArgumentException("The producer state list should not be empty")
                 } else {
-                    val sortedProducerStates = producerStates.sortedBy { it.unitPrice }
+                    sortedProducerStates = producerStates.sortedBy { it.unitPrice }
                     val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
                     { list, state -> list.plus(list.last() + state.amount) }
                     val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
@@ -223,19 +225,16 @@ object MatchingFlow {
         }
 
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
-            val retailerElectricityPreference = 0 // None
             val listingState = listingStateAndRef.state.data
-            val selectedListingType = if (listingState.listingType == ListingType.ProducerListing) 1 else 0
 
             // Penalty awarded to un-matched listings
             val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2  else 2
-
 
             // Create new listing for the retailer
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
                     listingState.electricityType, //TODO shouldn't retailers electricity type be set to either traditional or none(if consumer listing)?
-                    retailerElectricityPreference,
+                    ElectricityType.None,
                     unitPrice + unitPenalty,
                     listingState.amount,
                     ourIdentity,

@@ -47,7 +47,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 @InitiatingFlow
 @StartableByRPC
 class ListingFlowInitiator(private val electricityType: Int,
-                           private val electricityPreference: Int,
+                           private val electricityPreference: ElectricityType,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
@@ -100,9 +100,8 @@ class ListingFlowInitiator(private val electricityType: Int,
         val marketClock = marketClockQuery.marketTime
 
         progressTracker.currentStep = STEP_TYPE
-        val selectedPreference = if(electricityPreference == 1) ElectricityType.Renewable else if(electricityPreference == 2) ElectricityType.NonRenewable else ElectricityType.None
 
-        val listing = ListingState(transactionType, electricityType, selectedPreference, unitPrice, amount, sender, matcher, marketClock)
+        val listing = ListingState(transactionType, electricityType, electricityPreference, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
         if(transactionType == ListingType.ProducerListing){
