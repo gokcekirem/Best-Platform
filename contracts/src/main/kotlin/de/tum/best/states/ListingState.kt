@@ -5,6 +5,8 @@ import net.corda.core.contracts.BelongsToContract
 import net.corda.core.contracts.ContractState
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
+import net.corda.core.serialization.CordaSerializable
+
 /**
 * *Listing State*
 
@@ -32,6 +34,7 @@ data class ListingState(
     override val participants: List<AbstractParty> = listOf(sender, matcher)
 ) : ContractState
 
+@CordaSerializable
 enum class ListingTypes {
     ProducerListing, ConsumerListing
 }

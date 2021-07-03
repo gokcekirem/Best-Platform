@@ -1,9 +1,6 @@
 package com.template.webserver
 
-import de.tum.best.flows.ClearMarketTimeFlow
-import de.tum.best.flows.InitiateMarketTimeFlow
-import de.tum.best.flows.MatchingFlow
-import de.tum.best.flows.ResetMarketTimeFlow
+import de.tum.best.flows.*
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.flows.FlowLogic
 import net.corda.core.identity.CordaX500Name
@@ -88,6 +85,29 @@ class Controller(rpc: NodeRPCConnection) {
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
             ResponseEntity.badRequest().body(mapOf("error" to listOf(ex.message!!)))
+        }
+    }
+
+    @PostMapping(value = ["create-listing"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    fun createListing(@RequestBody listingForm: Forms.ListingForm): ResponseEntity<String> {
+        val matcherName = listingForm.matcherName
+        val matcherX500Name = CordaX500Name.parse(matcherName)
+        val matcherParty = proxy.wellKnownPartyFromX500Name(matcherX500Name) ?: return ResponseEntity.badRequest()
+            .body("Matcher named $matcherName cannot be found.\n")
+
+        return try {
+            val signedTx = proxy.startTrackedFlow(
+                ::ListingFlowInitiator,
+                listingForm.electricityType,
+                listingForm.unitPrice,
+                listingForm.amount,
+                matcherParty,
+                listingForm.transactionType
+            ).returnValue.getOrThrow()
+            ResponseEntity.status(HttpStatus.CREATED).body("Listing with id ${signedTx.id} committed to ledger.\n")
+        } catch (ex: Throwable) {
+            logger.error(ex.message, ex)
+            ResponseEntity.badRequest().body(ex.message!!)
         }
     }
 }
