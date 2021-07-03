@@ -1,6 +1,7 @@
 package com.template.webserver
 
-import de.tum.best.flows.ClearMarketTimeFlow.Initiator
+import de.tum.best.flows.ClearMarketTimeFlow
+import de.tum.best.flows.MatchingFlow
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
@@ -51,11 +52,25 @@ class Controller(rpc: NodeRPCConnection) {
             .body("Party named $partyName cannot be found.\n")
 
         return try {
-            val signedTx = proxy.startTrackedFlow(::Initiator, otherParty).returnValue.getOrThrow()
+            val signedTx = proxy.startTrackedFlow(ClearMarketTimeFlow::Initiator, otherParty).returnValue.getOrThrow()
             ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
             ResponseEntity.badRequest().body(ex.message!!)
+        }
+    }
+
+    @PostMapping(value = ["match"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun initiateMatching(): ResponseEntity<Map<String, List<String>>> {
+        return try {
+            val signedTxs = proxy.startTrackedFlow(MatchingFlow::Initiator).returnValue.getOrThrow()
+            ResponseEntity.status(HttpStatus.CREATED).body(
+                mapOf("createdTransactions" to
+                        signedTxs.map { "Transaction id ${it.id} committed to ledger" })
+            )
+        } catch (ex: Throwable) {
+            logger.error(ex.message, ex)
+            ResponseEntity.badRequest().body(mapOf("error" to listOf(ex.message!!)))
         }
     }
 }
