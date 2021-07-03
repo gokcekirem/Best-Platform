@@ -1,10 +1,15 @@
 package com.template.webserver
 
 import de.tum.best.flows.ClearMarketTimeFlow
+import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.MatchingFlow
+import de.tum.best.flows.ResetMarketTimeFlow
 import net.corda.client.jackson.JacksonSupport
+import net.corda.core.flows.FlowLogic
 import net.corda.core.identity.CordaX500Name
+import net.corda.core.identity.Party
 import net.corda.core.messaging.startTrackedFlow
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,7 +22,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import javax.servlet.http.HttpServletRequest
 
 /**
  * Define your API endpoints here.
@@ -40,19 +44,32 @@ class Controller(rpc: NodeRPCConnection) {
 
     private val proxy = rpc.proxy
 
-    @PostMapping(
-        value = ["clear-market-time"],
-        produces = [MediaType.TEXT_PLAIN_VALUE],
-        headers = ["Content-Type=${MediaType.APPLICATION_FORM_URLENCODED_VALUE}"]
-    )
+    @PostMapping(value = ["clear-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
     fun clearMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+        return startMarketTimeFlow(marketTimeForm, ClearMarketTimeFlow::Initiator)
+    }
+
+    @PostMapping(value = ["initate-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    fun initiateMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+        return startMarketTimeFlow(marketTimeForm, InitiateMarketTimeFlow::Initiator)
+    }
+
+    @PostMapping(value = ["reset-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    fun resetMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+        return startMarketTimeFlow(marketTimeForm, ResetMarketTimeFlow::Initiator)
+    }
+
+    private fun startMarketTimeFlow(
+        marketTimeForm: Forms.MarketTimeForm,
+        flowConstructor: (Party) -> FlowLogic<SignedTransaction>
+    ): ResponseEntity<String> {
         val partyName = marketTimeForm.partyName
         val partyX500Name = CordaX500Name.parse(partyName)
         val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest()
             .body("Party named $partyName cannot be found.\n")
 
         return try {
-            val signedTx = proxy.startTrackedFlow(ClearMarketTimeFlow::Initiator, otherParty).returnValue.getOrThrow()
+            val signedTx = proxy.startTrackedFlow(flowConstructor, otherParty).returnValue.getOrThrow()
             ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
