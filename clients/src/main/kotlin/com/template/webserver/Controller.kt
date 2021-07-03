@@ -14,6 +14,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import javax.servlet.http.HttpServletRequest
@@ -44,9 +45,8 @@ class Controller(rpc: NodeRPCConnection) {
         produces = [MediaType.TEXT_PLAIN_VALUE],
         headers = ["Content-Type=${MediaType.APPLICATION_FORM_URLENCODED_VALUE}"]
     )
-    fun clearMarketTime(request: HttpServletRequest): ResponseEntity<String> {
-        val partyName = request.getParameter("partyName") ?: return ResponseEntity.badRequest()
-            .body("Query parameter 'partyName' must not be null.\n")
+    fun clearMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+        val partyName = marketTimeForm.partyName
         val partyX500Name = CordaX500Name.parse(partyName)
         val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest()
             .body("Party named $partyName cannot be found.\n")
