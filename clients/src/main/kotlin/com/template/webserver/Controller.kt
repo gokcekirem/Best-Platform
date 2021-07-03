@@ -32,7 +32,7 @@ class Controller(rpc: NodeRPCConnection) {
     }
 
     @Bean
-    open fun mappingJackson2HttpMessageConverter(@Autowired rpcConnection: NodeRPCConnection): MappingJackson2HttpMessageConverter {
+    fun mappingJackson2HttpMessageConverter(@Autowired rpcConnection: NodeRPCConnection): MappingJackson2HttpMessageConverter {
         val mapper = JacksonSupport.createDefaultMapper(rpcConnection.proxy)
         val converter = MappingJackson2HttpMessageConverter()
         converter.objectMapper = mapper
@@ -46,7 +46,7 @@ class Controller(rpc: NodeRPCConnection) {
         return startMarketTimeFlow(marketTimeForm, ClearMarketTimeFlow::Initiator)
     }
 
-    @PostMapping(value = ["initate-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
+    @PostMapping(value = ["initiate-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
     fun initiateMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
         return startMarketTimeFlow(marketTimeForm, InitiateMarketTimeFlow::Initiator)
     }
