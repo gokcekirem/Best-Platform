@@ -62,10 +62,6 @@ object MatchingFlow {
 //                    it.state.data
 //                }
 
-//            val producersStateAndRefs =
-//                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ProducerListing }
-//            val consumersStateAndRefs =
-//                listingStateAndRefs.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
             // Iterate over consumer/producer preferences
             // Calculate merit order price for each preference
