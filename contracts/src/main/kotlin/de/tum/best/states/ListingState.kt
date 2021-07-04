@@ -37,5 +37,5 @@ enum class ListingType {
 }
 
 enum class ElectricityType {
-    Renewable, NonRenewable, None
+    Renewable, NonRenewable
 }
