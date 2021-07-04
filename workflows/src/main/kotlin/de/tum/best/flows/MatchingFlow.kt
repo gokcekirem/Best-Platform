@@ -72,7 +72,7 @@ object MatchingFlow {
             // Create matchings accordingly
             for (electricityPreference in ElectricityType.values()){
 
-                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityPreference == electricityPreference }
+                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
                 val producersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
                 val consumersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
@@ -234,7 +234,6 @@ object MatchingFlow {
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
                     listingState.electricityType, //TODO shouldn't retailers electricity type be set to either traditional or none(if consumer listing)?
-                    ElectricityType.None,
                     unitPrice + unitPenalty,
                     listingState.amount,
                     ourIdentity,

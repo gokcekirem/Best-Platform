@@ -23,8 +23,7 @@ import net.corda.core.identity.Party
 @BelongsToContract(ListingContract::class)
 data class ListingState(
     val listingType: ListingType,
-    val electricityType: Int,
-    val electricityPreference: ElectricityType,
+    val electricityType: ElectricityType,
     val unitPrice: Int,
     val amount: Int,
     val sender: Party,

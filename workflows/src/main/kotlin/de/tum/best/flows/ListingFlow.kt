@@ -38,7 +38,6 @@ import net.corda.core.node.services.vault.QueryCriteria
  * ListingFlowInitiator initiator is used in order to start the listing creation process
 
  *@param electricityType Type of the electricity produced (renewable, traditional, ...)
- *@param electricityPreference Type of the electricity preferred by consumer (renewable, traditional, none...)
  *@param unitPrice Price of one unit of electricity
  *@param amount The amount of electricity this transaction is for
  *@param matcher ID of the matching service node
@@ -46,8 +45,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 */
 @InitiatingFlow
 @StartableByRPC
-class ListingFlowInitiator(private val electricityType: Int,
-                           private val electricityPreference: ElectricityType,
+class ListingFlowInitiator(private val electricityType: ElectricityType,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
@@ -101,7 +99,7 @@ class ListingFlowInitiator(private val electricityType: Int,
 
         progressTracker.currentStep = STEP_TYPE
 
-        val listing = ListingState(transactionType, electricityType, electricityPreference, unitPrice, amount, sender, matcher, marketClock)
+        val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
         if(transactionType == ListingType.ProducerListing){
