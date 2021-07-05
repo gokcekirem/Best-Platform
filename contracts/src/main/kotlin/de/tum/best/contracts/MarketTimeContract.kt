@@ -24,7 +24,7 @@ class MarketTimeContract : Contract {
 
         requireThat{
 
-            "There should only be a single input state" using(inputs.size == 1)
+            "There should only be a single input state or none, if initiated for the first time" using(inputs.size <= 1)
 
             "There should only be a single output state" using(outputs.size == 1)
         }
@@ -49,7 +49,7 @@ class MarketTimeContract : Contract {
 
                 "marketTime value must be lower than 3." using(marketTime.marketTime <3)
 
-                "marketClock value must be non-negative" using(marketTime.marketClock > 0)
+                "marketClock value must be non-negative" using(marketTime.marketClock >= 0)
             }
         }
     }

@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import de.tum.best.contracts.MarketTimeContract
 import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.Command
+import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
@@ -60,18 +61,10 @@ object ResetMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
-            // Query the vault to fetch a list of all MarketTimeState states, and get the last state (input State)
-            // to fetch the desired MarketTimeState state from the vault. This filtered state would be used as input to the
-            // transaction.
+            val criteria = QueryCriteria.LinearStateQueryCriteria()
+            val inputStateandRef = serviceHub.vaultService.queryBy<MarketTimeState>(criteria).states[0]
 
-            val queryCriteria = QueryCriteria.VaultQueryCriteria(
-                Vault.StateStatus.UNCONSUMED,
-                null,
-                null)
-
-            val marketTimeStateAndRefs = serviceHub.vaultService.queryBy<MarketTimeState>(queryCriteria).states
-            val inputStateAndRef = marketTimeStateAndRefs.last()
-            val inputState = inputStateAndRef.state.data
+            val inputState = inputStateandRef.state.data
 
             val outputState = MarketTimeState(inputState.marketClock+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
@@ -81,7 +74,7 @@ object ResetMarketTimeFlow {
             // Generate an unsigned transaction.
 
             val txCommand = Command(MarketTimeContract.Commands.ResetMarketTime(),outputState.participants.map { it.owningKey })
-            val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
+            val txBuilder = TransactionBuilder(notary).addInputState(inputStateandRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
 
@@ -121,14 +114,15 @@ object ResetMarketTimeFlow {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
                     val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
-                    val inputmarketT = stx.inputs.filterIsInstance<MarketTimeState>().single()
-                    "MarketTime value in the previous (Input) state must be equal to 2" using(inputmarketT.marketTime == 2)
+                    val ourStateRef = stx.inputs.single()
+                    val ourStateAndRef: StateAndRef<MarketTimeState> = serviceHub.toStateAndRef<MarketTimeState>(ourStateRef)
+                    val inputstate = ourStateAndRef.state.data
+                    "MarketTime value in the previous (Input) state must be equal to 2" using(inputstate.marketTime == 2)
 
-                    val marketT = output
-                    "The MarketTime value after Reset must be equal to 0" using (marketT.marketTime == 0 )
+                    "The MarketTime value after Reset must be equal to 0" using (output.marketTime == 0 )
                     //A MarketTime Value other than 0 should not be possible since this is the Reset flow
 
-                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(marketT.marketClock == inputmarketT.marketClock + 1)
+                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(output.marketClock == inputstate.marketClock + 1)
 
                 }
             }
