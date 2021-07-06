@@ -31,7 +31,7 @@ class MarketTimeContract : Contract {
         // Step 3: Based on type of the command do verifications
 
         when (command.value) {
-            is Commands.InitiateMarketTime, is Commands.ClearMarketTime, is Commands.ResetMarketTime ->
+            is Commands.InitiateMarketTime, is Commands.ClearMarketTime, is Commands.ResetMarketTime, is Commands.GetMarketTime ->
                 verifyMarketTime(outputs)
             else -> {
                 throw IllegalArgumentException("Unknown command!")
@@ -54,13 +54,18 @@ class MarketTimeContract : Contract {
         }
     }
 
-    // Commands are used to determine the type of the listing.
-    // -InitiateMarketTime: initialization after the creation of Market Time object
-    // -UpdateMarketTime: updating the marketing time after its creation
+    /*
+    Commands are used to determine the type of the listing.
+    InitiateMarketTime: initialization after the creation of Market Time object, sets market time 0 to 1
+    ClearMarketTime: clearing the marketing time, sets market time 1 to 2
+    ResetMarketTime: reset the marketing time, sets market time 2 to 0
+    GetMarketTime: get the market time state
+    */
     interface Commands : CommandData {
-        class InitiateMarketTime : Commands {}
-        class ClearMarketTime : Commands {}
-        class ResetMarketTime : Commands {}
+        class InitiateMarketTime : Commands
+        class ClearMarketTime : Commands
+        class ResetMarketTime : Commands
+        class GetMarketTime : Commands
     }
 }
 
