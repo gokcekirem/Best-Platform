@@ -58,7 +58,6 @@ class ListingContract : Contract {
         for (listing in listings) {
             // Requirements
             requireThat {
-//                "Electricity type preference is incompatible with the listing type. It should be set to either renewable or non-renewable".using(listing.electricityType in listOf(ElectricityType.Renewable, ElectricityType.NonRenewable))
                 "Unit price must be positive".using(listing.unitPrice > 0)
                 "Amount should be positive".using(listing.amount > 0)
                 "Market clock should be valid".using(listing.marketClock >= 0)
