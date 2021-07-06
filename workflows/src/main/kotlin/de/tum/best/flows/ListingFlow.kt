@@ -16,11 +16,12 @@ import net.corda.core.flows.FlowSession
 import net.corda.core.identity.Party
 
 import de.tum.best.contracts.ListingContract
+import de.tum.best.states.ElectricityType
 
 import net.corda.core.transactions.TransactionBuilder
 
 import de.tum.best.states.ListingState
-import de.tum.best.states.ListingTypes
+import de.tum.best.states.ListingType
 import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.requireThat
 import net.corda.core.identity.AbstractParty
@@ -36,7 +37,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 /**
  * ListingFlowInitiator initiator is used in order to start the listing creation process
 
- *@param electricityType Type of the electricity (renewable, traditional, ...)
+ *@param electricityType Type of the electricity produced (renewable, traditional, ...)
  *@param unitPrice Price of one unit of electricity
  *@param amount The amount of electricity this transaction is for
  *@param matcher ID of the matching service node
@@ -44,11 +45,11 @@ import net.corda.core.node.services.vault.QueryCriteria
 */
 @InitiatingFlow
 @StartableByRPC
-class ListingFlowInitiator(private val electricityType: Int,
+class ListingFlowInitiator(private val electricityType: ElectricityType,
                            private val unitPrice: Int,
                            private val amount: Int,
                            private val matcher: Party,
-                           private val transactionType: ListingTypes
+                           private val transactionType: ListingType
 ): FlowLogic<SignedTransaction>() {
 
     companion object {
@@ -85,7 +86,7 @@ class ListingFlowInitiator(private val electricityType: Int,
         progressTracker.currentStep = STEP_NOTARY
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
 
-        // 3. Step: Conversion to ListingTypes enum and listing creation & market clock fetch
+        // 3. Step: Conversion to ListingType enum and listing creation & market clock fetch
         progressTracker.currentStep = STEP_CLOCK
 
         //TODO: We need a flow to fetch current market time, that flow will be called here
@@ -101,7 +102,7 @@ class ListingFlowInitiator(private val electricityType: Int,
         val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(transactionType == ListingTypes.ProducerListing){
+        if(transactionType == ListingType.ProducerListing){
             // Transaction is of type ProducerListing
             listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
         } else {

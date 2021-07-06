@@ -1,9 +1,9 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import de.tum.best.states.ElectricityType
 import de.tum.best.states.ListingState
-import de.tum.best.states.ListingTypes
-import de.tum.best.states.MarketTimeState
+import de.tum.best.states.ListingType
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.flows.*
 import net.corda.core.node.services.Vault
@@ -27,8 +27,8 @@ object MatchingFlow {
 
         companion object {
             // TODO Update Progress Descriptions
-            object SEARCHING_STATES : ProgressTracker.Step("Generating transaction based on new IOU.")
-            object CALCULATING_UNIT_PRICE : ProgressTracker.Step("Verifying contract constraints.")
+            object SEARCHING_STATES : ProgressTracker.Step("Looking up un-consumed listing states from the vault.")
+            object CALCULATING_UNIT_PRICE : ProgressTracker.Step("Calculating merit order unit price.")
             object GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW :
                 ProgressTracker.Step("Splitting Transaction according to required amounts.") {
                 override fun childProgressTracker() = SplitListingStateFlow.Initiator.tracker()
@@ -58,50 +58,53 @@ object MatchingFlow {
                 QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
             )
                 .states
-//                .map {
-//                    it.state.data
-//                }
 
-            val producersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingTypes.ProducerListing }
-            val consumersStateAndRefs =
-                listingStateAndRefs.filter { it.state.data.listingType == ListingTypes.ConsumerListing }
 
-            val listingStates = listingStateAndRefs.map { it.state.data }
-            val producerStates = listingStates.filter { it.listingType == ListingTypes.ProducerListing }
-            val consumerStates = listingStates.filter { it.listingType == ListingTypes.ConsumerListing }
+            // Iterate over consumer/producer preferences
+            // Calculate merit order price for each preference
+            // Create matchings accordingly
+            for (electricityPreference in ElectricityType.values()){
+                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
 
-            progressTracker.currentStep = CALCULATING_UNIT_PRICE
+                val producersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
+                val consumersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
-            val consumerEnergySum = consumerStates.map { it.amount }.sum()
-            val producerEnergySum = producerStates.map { it.amount }.sum()
-            val participatingProducerStates: List<ListingState>
-            // Calculate the Merit Order Price
-            val unitPrice = if (consumerEnergySum > producerEnergySum) {
-                producerStates.map { it.unitPrice }.max()
-                    ?: throw IllegalArgumentException("The producer state list should not be empty")
-            } else {
-                val sortedProducerStates = producerStates.sortedBy { it.unitPrice }
-                val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
-                { list, state -> list.plus(list.last() + state.amount) }
-                val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
-                participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
-                participatingProducerStates.last().unitPrice
-            }
+                val sortedProducersByReference = producersByPreference.sortedBy { it.state.data.unitPrice }
 
-            progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
+                val sortedProducerStates = sortedProducersByReference.map { it.state.data }
+                val consumerStates = consumersByPreference.map { it.state.data }
 
-            // Creates matches from client listings and adds them to the global matchings hashset
-            // Returns un matched listings that should be matched to the retailer
-            matchListings(
-                unitPrice,
-                producersStateAndRefs.toMutableList(),
-                consumersStateAndRefs.toMutableList()
-            )
-                // Create matches with the retailer
-                .forEach { unmatchedListing ->
-                    matchWithRetailer(unmatchedListing, unitPrice)
+                progressTracker.currentStep = CALCULATING_UNIT_PRICE
+
+                val producerEnergySum = sortedProducerStates.map { it.amount }.sum()
+                val consumerEnergySum = consumerStates.map { it.amount }.sum()
+
+                // Calculate the Merit Order Price
+                val unitPrice = if (consumerEnergySum > producerEnergySum) {
+                    sortedProducerStates.map { it.unitPrice }.max()
+                        ?: throw IllegalArgumentException("The producer state list should not be empty")
+                } else {
+                    val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
+                    { list, state -> list.plus(list.last() + state.amount) }
+                    val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
+                    val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
+                    participatingProducerStates.last().unitPrice
                 }
+                //TODO progressTracker within loops?
+                progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
+
+                // Creates matches from client listings and adds them to the global matchings hashset
+                // Returns un matched listings that should be matched to the retailer
+                matchListings(
+                    unitPrice,
+                    sortedProducersByReference.toMutableList(),
+                    consumersByPreference.sortedByDescending { it.state.data.unitPrice }.toMutableList()
+                )
+                    // Create matches with the retailer
+                    .forEach { unmatchedListing ->
+                        matchWithRetailer(unmatchedListing, unitPrice)
+                    }
+            }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS
             return matchings.map {
@@ -216,15 +219,19 @@ object MatchingFlow {
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
 
+            // Penalty awarded to un-matched listings
+            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2  else 2
+
+            // Create new listing for the retailer
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
-                    listingState.electricityType,
-                    unitPrice,
+                    listingState.electricityType, //TODO shouldn't retailers electricity type be set to either traditional or none(if consumer listing)?
+                    unitPrice + unitPenalty,
                     listingState.amount,
                     ourIdentity,
-                    if (listingState.listingType == ListingTypes.ProducerListing)
-                        ListingTypes.ConsumerListing
-                    else ListingTypes.ProducerListing
+                    if (listingState.listingType == ListingType.ProducerListing)
+                        ListingType.ConsumerListing
+                    else ListingType.ProducerListing
                 )
             )
             val retailerStateAndRef =
@@ -233,12 +240,12 @@ object MatchingFlow {
             matchings.apply {
                 add(
                     Matching(
-                        unitPrice,
+                        unitPrice + unitPenalty,
                         listingState.amount,
-                        if (listingState.listingType == ListingTypes.ProducerListing)
+                        if (listingState.listingType == ListingType.ProducerListing)
                             listingStateAndRef
                         else retailerStateAndRef,
-                        if (listingState.listingType == ListingTypes.ProducerListing)
+                        if (listingState.listingType == ListingType.ProducerListing)
                             retailerStateAndRef
                         else listingStateAndRef
                     )
