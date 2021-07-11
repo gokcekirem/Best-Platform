@@ -1,4 +1,4 @@
-package net.corda.demos.crowdFunding.flows
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.flows.FlowLogic
@@ -11,7 +11,7 @@ import net.corda.core.transactions.SignedTransaction
  * remaining identities.
  */
 @InitiatingFlow
-class BroadcastTransaction(val stx: SignedTransaction) : FlowLogic<Unit>() {
+class BroadcastTransactionFlow(val stx: SignedTransaction) : FlowLogic<Unit>() {
 
     @Suspendable
     override fun call() {

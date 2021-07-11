@@ -16,4 +16,8 @@ dependencies {
     // Corda dependencies.
     cordaCompile "$corda_core_release_group:corda-core:$corda_core_release_version"
     testCompile "$corda_release_group:corda-node-driver:$corda_release_version"
+    testImplementation "org.junit.jupiter:junit-jupiter:$junit_version"
+}
+test {
+    useJUnitPlatform()
 }

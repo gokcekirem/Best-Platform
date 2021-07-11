@@ -1,4 +1,4 @@
-package net.corda.demos.crowdFunding.flows
+package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.flows.FlowLogic
@@ -12,8 +12,8 @@ import net.corda.core.node.StatesToRecord
  * is called, the [StatesToRecord.ALL_VISIBLE] parameter is used so that all the states are recorded despite the
  * receiving node not being a participant in these states.
  */
-@InitiatedBy(BroadcastTransaction::class)
-class RecordTransactionAsObserver(val otherSession: FlowSession) : FlowLogic<Unit>() {
+@InitiatedBy(BroadcastTransactionFlow::class)
+class RecordTransactionAsObserverFlow(val otherSession: FlowSession) : FlowLogic<Unit>() {
 
     @Suspendable
     override fun call() {
