@@ -57,7 +57,4 @@ task integrationTest(type: Test, dependsOn: []) {
 }
 test {
     useJUnitPlatform()
-    if (filter.includePatterns) {
-        forkEvery 1
-    }
 }
