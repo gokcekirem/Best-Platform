@@ -39,6 +39,21 @@ class Controller(rpc: NodeRPCConnection) {
 
     private val proxy = rpc.proxy
 
+    @GetMapping(value = ["listings"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getListings(): ResponseEntity<List<StateAndRef<ListingState>>> {
+        return ResponseEntity.ok(proxy.vaultQueryBy<ListingState>().states)
+    }
+
+    @GetMapping(value = ["market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getMarketTime(): ResponseEntity<StateAndRef<MarketTimeState>> {
+        val nullableMarketTimeState = proxy.vaultQueryBy<MarketTimeState>().states.singleOrNull()
+        return if (nullableMarketTimeState != null) {
+            ResponseEntity.ok(nullableMarketTimeState)
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
+
     enum class MarketTimeFlow {
         INITIATE_FLOW,
         CLEAR_FLOW,
