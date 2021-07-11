@@ -39,6 +39,7 @@ enum class ListingType {
     ProducerListing, ConsumerListing
 }
 
+@CordaSerializable
 enum class ElectricityType {
     Renewable, NonRenewable
 }
