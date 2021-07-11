@@ -50,8 +50,8 @@ allprojects { //Properties that you need to compile your project (The applicatio
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
         kotlinOptions {
-            languageVersion = "1.4"
-            apiVersion = "1.4"
+            languageVersion = "1.2"
+            apiVersion = "1.2"
             jvmTarget = "1.8"
             javaParameters = true   // Useful for reflection.
         }
@@ -90,21 +90,6 @@ dependencies {
     cordaCompile "org.apache.logging.log4j:log4j-slf4j-impl:${log4j_version}"
     cordaCompile "org.apache.logging.log4j:log4j-web:${log4j_version}"
     cordaCompile "org.slf4j:jul-to-slf4j:$slf4j_version"
-}
-
-//Task to build the jar for ganache.
-task ganache {
-    subprojects {
-        if (it.project.name != "clients") {
-            dependsOn jar
-            doLast {
-                copy {
-                    from "${buildDir}/libs"
-                    into "${rootDir}/build/libs"
-                }
-            }
-        }
-    }
 }
 
 //Task to deploy the nodes in order to bootstrap a network
