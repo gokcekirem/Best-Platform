@@ -1,19 +1,18 @@
 package de.tum.best.flowtests
 
-import de.tum.best.contracts.MarketTimeContract
 import de.tum.best.flows.BroadcastTransactionFlow
+import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.RecordTransactionAsObserverFlow
 import de.tum.best.states.MarketTimeState
-import de.tum.best.flows.InitiateMarketTimeFlow
-import net.corda.core.identity.CordaX500Name
 import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.*
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.node.services.vault.QueryCriteria
 
 
 /**
@@ -77,13 +76,13 @@ class BroadcastTxFlowTests {
         network.runNetwork()
 
         val criteria = QueryCriteria.LinearStateQueryCriteria()
-        val requiredmarketTime = 1
-        val requiredmarketClock = 0
+        val requiredMarketTime = 1
+        val requiredMarketClock = 0
         // We check the recorded transaction in both transaction storages.
         for (node in listOf(a, b,c,d)) {
             assertEquals(signedTx, node.services.validatedTransactions.getTransaction(signedTx.id))
-            assertEquals(requiredmarketTime,node.services.vaultService.queryBy<MarketTimeState>(criteria).states.last().state.data.marketTime)
-            assertEquals(requiredmarketClock,node.services.vaultService.queryBy<MarketTimeState>(criteria).states.last().state.data.marketClock)
+            assertEquals(requiredMarketTime,node.services.vaultService.queryBy<MarketTimeState>(criteria).states.last().state.data.marketTime)
+            assertEquals(requiredMarketClock,node.services.vaultService.queryBy<MarketTimeState>(criteria).states.last().state.data.marketClock)
 
         }
     }

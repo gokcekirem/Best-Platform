@@ -1,19 +1,15 @@
 package de.tum.best.flowtests
 
-import de.tum.best.contracts.MarketTimeContract
 import de.tum.best.flows.ClearMarketTimeFlow
 import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.ResetMarketTimeFlow
 import de.tum.best.states.MarketTimeState
-import net.corda.core.identity.CordaX500Name
 import net.corda.core.node.services.queryBy
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.*
 import org.junit.jupiter.api.*
 import kotlin.test.assertEquals
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.node.services.vault.QueryCriteria
 
 
 /**
@@ -99,8 +95,8 @@ class MarketTimeFlowTests {
     //No Input, Market is created for the first time
     @Test
     fun `flow records the correct MarketTimeState after InitiateMarketTimeFlow in both parties' vaults`() {
-        val outputmarketClock = 0
-        val outputmarketTime = 1
+        val outputMarketClock = 0
+        val outputMarketTime = 1
         val flow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
         val future = a.startFlow(flow)
         network.runNetwork()
@@ -109,11 +105,11 @@ class MarketTimeFlowTests {
         // We check the recorded MarketTimeState in both vaults.
         for (node in listOf(a, b)) {
             node.transaction {
-                val markettimestates = node.services.vaultService.queryBy<MarketTimeState>().states
-                assertEquals(1, markettimestates.size)
-                val recordedState = markettimestates.single().state.data
-                assertEquals(recordedState.marketClock, outputmarketClock)
-                assertEquals(recordedState.marketTime, outputmarketTime)
+                val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
+                assertEquals(1, marketTimeStates.size)
+                val recordedState = marketTimeStates.single().state.data
+                assertEquals(recordedState.marketClock, outputMarketClock)
+                assertEquals(recordedState.marketTime, outputMarketTime)
                 assertEquals(recordedState.sender, a.info.singleIdentity())
                 assertEquals(recordedState.receiver, b.info.singleIdentity())
             }
@@ -127,8 +123,8 @@ class MarketTimeFlowTests {
 
     @Test
     fun `SignedTransaction returned by the ClearMarketTimeFlow is signed by the initiator`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
@@ -141,8 +137,8 @@ class MarketTimeFlowTests {
 
     @Test
     fun `SignedTransaction returned by the ClearMarketTimeFlow is signed by the acceptor`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val past = a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
@@ -154,8 +150,8 @@ class MarketTimeFlowTests {
 
     @Test
     fun `ClearMarketTimeFlow records a transaction in both parties' transaction storages`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val past = a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val past = a.startFlow(preFlow)
         network.runNetwork()
         past.getOrThrow()
 
@@ -170,14 +166,14 @@ class MarketTimeFlowTests {
         }
     }
 
-    //InitiateMarketTimeFlow has to come first since the remaining 2 Markettime Flows query the unconsumed MarketTime state a
+    //InitiateMarketTimeFlow has to come first since the remaining 2 MarketTime Flows query the unconsumed MarketTime state a
     // and use it as Input to the transaction
     @Test
     fun `flow records the correct MarketTimeState after ClearMarketTimeFlow in both parties' vaults`() {
-        val outputmarketClock = 0
-        val outputmarketTime = 2
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val past = a.startFlow(preflow)
+        val outputMarketClock = 0
+        val outputMarketTime = 2
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val past = a.startFlow(preFlow)
         network.runNetwork()
         past.getOrThrow()
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
@@ -189,11 +185,11 @@ class MarketTimeFlowTests {
         // We check the recorded MarketTimeState in both vaults.
         for (node in listOf(a, b)) {
             node.transaction {
-                val markettimestates = node.services.vaultService.queryBy<MarketTimeState>().states
-                assertEquals(1, markettimestates.size)
-                val recordedState = markettimestates.single().state.data
-                assertEquals(recordedState.marketClock, outputmarketClock)
-                assertEquals(recordedState.marketTime, outputmarketTime)
+                val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
+                assertEquals(1, marketTimeStates.size)
+                val recordedState = marketTimeStates.single().state.data
+                assertEquals(recordedState.marketClock, outputMarketClock)
+                assertEquals(recordedState.marketTime, outputMarketTime)
                 assertEquals(recordedState.sender, a.info.singleIdentity())
                 assertEquals(recordedState.receiver, b.info.singleIdentity())
             }
@@ -206,16 +202,16 @@ class MarketTimeFlowTests {
      */
     @Test
     fun `SignedTransaction returned by the ResetMarketTimeFlow is signed by the initiator`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present = a.startFlow(flow)
+        a.startFlow(flow)
         network.runNetwork()
 
-        val postflow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future = a.startFlow(postflow)
+        val postFlow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val future = a.startFlow(postFlow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
         signedTx.verifySignaturesExcept(b.info.singleIdentity().owningKey)
@@ -223,16 +219,16 @@ class MarketTimeFlowTests {
 
     @Test
     fun `SignedTransaction returned by the ResetMarketTimeFlow is signed by the acceptor`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present = a.startFlow(flow)
+        a.startFlow(flow)
         network.runNetwork()
 
-        val postflow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future = a.startFlow(postflow)
+        val postFlow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val future = a.startFlow(postFlow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
         signedTx.verifySignaturesExcept(a.info.singleIdentity().owningKey)
@@ -240,16 +236,16 @@ class MarketTimeFlowTests {
 
     @Test
     fun `ResetMarketTimeFlow records a transaction in both parties' transaction storages`() {
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow)
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present = a.startFlow(flow)
+        a.startFlow(flow)
         network.runNetwork()
 
-        val postflow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future = a.startFlow(postflow)
+        val postFlow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val future = a.startFlow(postFlow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
 
@@ -259,33 +255,33 @@ class MarketTimeFlowTests {
         }
     }
 
-    //InitiateMarketTimeFlow has to come first since the remaining 2 Markettime Flows query the unconsumed MarketTime state a
+    //InitiateMarketTimeFlow has to come first since the remaining 2 MarketTime Flows query the unconsumed MarketTime state a
     // and use it as Input to the transaction
     @Test
     fun `flow records the correct MarketTimeState after ResetMarketTimeFlow in both parties' vaults`() {
-        val outputmarketClock = 1
-        val outputmarketTime = 0
-        val preflow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow)
+        val outputMarketClock = 1
+        val outputMarketTime = 0
+        val preFlow = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow)
         network.runNetwork()
 
         val flow = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present = a.startFlow(flow)
+        a.startFlow(flow)
         network.runNetwork()
 
-        val postflow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future = a.startFlow(postflow)
+        val postFlow = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        val future = a.startFlow(postFlow)
         network.runNetwork()
         future.getOrThrow()
 
         // We check the recorded MarketTimeState in both vaults.
         for (node in listOf(a, b)) {
             node.transaction {
-                val markettimestates = node.services.vaultService.queryBy<MarketTimeState>().states
-                assertEquals(1, markettimestates.size)
-                val recordedState = markettimestates.single().state.data
-                assertEquals(recordedState.marketClock, outputmarketClock)
-                assertEquals(recordedState.marketTime, outputmarketTime)
+                val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
+                assertEquals(1, marketTimeStates.size)
+                val recordedState = marketTimeStates.single().state.data
+                assertEquals(recordedState.marketClock, outputMarketClock)
+                assertEquals(recordedState.marketTime, outputMarketTime)
                 assertEquals(recordedState.sender, a.info.singleIdentity())
                 assertEquals(recordedState.receiver, b.info.singleIdentity())
             }
@@ -295,43 +291,43 @@ class MarketTimeFlowTests {
     // The following test checks if flows generate the correct states through transactions after Market stage loops
     @Test
     fun `flow records the correct MarketTimeState after 2 Market loops in both parties' vaults`() {
-        val outputmarketClock = 2
-        val outputmarketTime = 1
-        val preflow1 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow1)
+        val outputMarketClock = 2
+        val outputMarketTime = 1
+        val preFlow1 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow1)
         network.runNetwork()
 
         val flow1 = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present1 = a.startFlow(flow1)
+        a.startFlow(flow1)
         network.runNetwork()
 
-        val postflow1 = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future1 = a.startFlow(postflow1)
+        val postFlow1 = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(postFlow1)
         network.runNetwork()
 
-        val preflow2 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow2)
+        val preFlow2 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow2)
         network.runNetwork()
 
         val flow2 = ClearMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val present2 = a.startFlow(flow2)
+        a.startFlow(flow2)
         network.runNetwork()
 
-        val postflow2 = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
-        val future2 = a.startFlow(postflow2)
+        val postFlow2 = ResetMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(postFlow2)
         network.runNetwork()
 
-        val preflow3 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
-        a.startFlow(preflow3)
+        val preFlow3 = InitiateMarketTimeFlow.Initiator(b.info.singleIdentity())
+        a.startFlow(preFlow3)
         network.runNetwork()
         // We check the recorded MarketTimeState in both vaults.
         for (node in listOf(a, b)) {
             node.transaction {
-                val markettimestates = node.services.vaultService.queryBy<MarketTimeState>().states
-                assertEquals(1, markettimestates.size)
-                val recordedState = markettimestates.single().state.data
-                assertEquals(recordedState.marketClock, outputmarketClock)
-                assertEquals(recordedState.marketTime, outputmarketTime)
+                val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
+                assertEquals(1, marketTimeStates.size)
+                val recordedState = marketTimeStates.single().state.data
+                assertEquals(recordedState.marketClock, outputMarketClock)
+                assertEquals(recordedState.marketTime, outputMarketTime)
                 assertEquals(recordedState.sender, a.info.singleIdentity())
                 assertEquals(recordedState.receiver, b.info.singleIdentity())
             }
