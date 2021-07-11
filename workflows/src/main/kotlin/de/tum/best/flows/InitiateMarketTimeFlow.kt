@@ -22,9 +22,7 @@ import net.corda.core.utilities.ProgressTracker
 object InitiateMarketTimeFlow {
     @InitiatingFlow
     @StartableByRPC
-    class Initiator(
-
-        val otherParty: Party) : FlowLogic<SignedTransaction>() { // Could also be private?
+    class Initiator(val otherParty: Party) : FlowLogic<SignedTransaction>() { // Could also be private?
         /**
          * The progress tracker checkpoints each stage of the flow and outputs the specified messages when each
          * checkpoint is reached in the code. See the 'progressTracker.currentStep' expressions within the call() function.
@@ -65,47 +63,43 @@ object InitiateMarketTimeFlow {
             var outputState: MarketTimeState
             var txBuilder: TransactionBuilder
 
-            val criteria = QueryCriteria.LinearStateQueryCriteria()
-
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
 
             // Generate an unsigned transaction based on the given conditions
 
 
-            when (serviceHub.vaultService.queryBy<MarketTimeState>(criteria).states.any() ) {
+            val marketTimeStates = serviceHub.vaultService.queryBy<MarketTimeState>(
+                QueryCriteria.LinearStateQueryCriteria()
+            ).states
+            if (marketTimeStates.any()) {
                 // true, if there exists an input StateandRef of type MarketTimeState
-
-                true -> {
-                    val inputStateandRef = serviceHub.vaultService.queryBy<MarketTimeState>(criteria).states[0]
-                    val inputState = inputStateandRef.state.data
-                    outputState = MarketTimeState(
-                        inputState.marketClock,
-                        inputState.marketTime + 1,
-                        serviceHub.myInfo.legalIdentities.first(),
-                        otherParty
-                    )
-                    val txCommand = Command(
-                        MarketTimeContract.Commands.InitiateMarketTime(),
-                        outputState.participants.map { it.owningKey })
-                    txBuilder = TransactionBuilder(notary).addInputState(inputStateandRef)
-                        .addOutputState(outputState, MarketTimeContract.ID)
-                        .addCommand(txCommand)
-                }
-
-                false -> {
-                    outputState = MarketTimeState(0,1,serviceHub.myInfo.legalIdentities.first(),
-                        otherParty)
-                    val txCommand = Command(
-                        MarketTimeContract.Commands.InitiateMarketTime(),
-                        outputState.participants.map { it.owningKey })
-                    txBuilder = TransactionBuilder(notary)
-                        .addOutputState(outputState, MarketTimeContract.ID)
-                        .addCommand(txCommand)
-
-                }
-
+                val inputStateAndRef = marketTimeStates.first()
+                val inputState = inputStateAndRef.state.data
+                outputState = MarketTimeState(
+                    inputState.marketClock,
+                    inputState.marketTime + 1,
+                    serviceHub.myInfo.legalIdentities.first(),
+                    otherParty
+                )
+                val txCommand = Command(
+                    MarketTimeContract.Commands.InitiateMarketTime(),
+                    outputState.participants.map { it.owningKey })
+                txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
+                    .addOutputState(outputState, MarketTimeContract.ID)
+                    .addCommand(txCommand)
+            } else {
                 //If this is indeed the initiation of the Market, thus Markettime concept;
+                outputState = MarketTimeState(
+                    0, 1, serviceHub.myInfo.legalIdentities.first(),
+                    otherParty
+                )
+                val txCommand = Command(
+                    MarketTimeContract.Commands.InitiateMarketTime(),
+                    outputState.participants.map { it.owningKey })
+                txBuilder = TransactionBuilder(notary)
+                    .addOutputState(outputState, MarketTimeContract.ID)
+                    .addCommand(txCommand)
             }
 
 
@@ -145,23 +139,18 @@ object InitiateMarketTimeFlow {
                 override fun checkTransaction(stx: SignedTransaction) = requireThat {
                     val output = stx.tx.outputsOfType<MarketTimeState>().single()
 
-                    val marketT = output
-                    "MarketTime value must be equal to 1 after initialization." using (marketT.marketTime == 1)
+                    "MarketTime value must be equal to 1 after initialization." using (output.marketTime == 1)
                     //A MarketTime Value other than 1 should not be possible since this is the initiation flow
 
                     if (stx.inputs.any()) {
                         val ourStateRef = stx.inputs.single()
                         val ourStateAndRef: StateAndRef<MarketTimeState> = serviceHub.toStateAndRef<MarketTimeState>(ourStateRef)
-                        val inputstate = ourStateAndRef.state.data
+                        val inputState = ourStateAndRef.state.data
 
-                        "MarketTime value in the previous (Input) state must be equal to 0." using (inputstate.marketTime == 0)
-
-
+                        "MarketTime value in the previous (Input) state must be equal to 0." using (inputState.marketTime == 0)
                     }
                     else {
-
                         "marketClock in the output state after market initiation should be 0, if there is no input state " using (output.marketClock == 0)
-
                     }
                 }
             }

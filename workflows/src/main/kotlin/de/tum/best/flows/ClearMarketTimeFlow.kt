@@ -8,7 +8,6 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
-import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -63,10 +62,11 @@ object ClearMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
-            val criteria = QueryCriteria.LinearStateQueryCriteria()
-            val inputStateandRef = serviceHub.vaultService.queryBy<MarketTimeState>(criteria).states[0]
+            val inputStateAndRef = serviceHub.vaultService.queryBy<MarketTimeState>(
+                QueryCriteria.LinearStateQueryCriteria()
+            ).states.first()
 
-            val inputState = inputStateandRef.state.data
+            val inputState = inputStateAndRef.state.data
             val outputState = MarketTimeState(inputState.marketClock,inputState.marketTime + 1, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
             // Stage 1.
@@ -75,7 +75,7 @@ object ClearMarketTimeFlow {
             // Generate an unsigned transaction.
 
             val txCommand = Command(MarketTimeContract.Commands.ClearMarketTime(),outputState.participants.map { it.owningKey })
-            val txBuilder = TransactionBuilder(notary).addInputState(inputStateandRef)
+            val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
 

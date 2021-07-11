@@ -8,7 +8,6 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
-import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
@@ -61,10 +60,11 @@ object ResetMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
-            val criteria = QueryCriteria.LinearStateQueryCriteria()
-            val inputStateandRef = serviceHub.vaultService.queryBy<MarketTimeState>(criteria).states[0]
+            val inputStateAndRef = serviceHub.vaultService.queryBy<MarketTimeState>(
+                QueryCriteria.LinearStateQueryCriteria()
+            ).states.first()
 
-            val inputState = inputStateandRef.state.data
+            val inputState = inputStateAndRef.state.data
 
             val outputState = MarketTimeState(inputState.marketClock+1,0, serviceHub.myInfo.legalIdentities.first(), otherParty)
 
@@ -74,7 +74,7 @@ object ResetMarketTimeFlow {
             // Generate an unsigned transaction.
 
             val txCommand = Command(MarketTimeContract.Commands.ResetMarketTime(),outputState.participants.map { it.owningKey })
-            val txBuilder = TransactionBuilder(notary).addInputState(inputStateandRef)
+            val txBuilder = TransactionBuilder(notary).addInputState(inputStateAndRef)
                 .addOutputState(outputState, MarketTimeContract.ID)
                 .addCommand(txCommand)
 
@@ -116,13 +116,13 @@ object ResetMarketTimeFlow {
 
                     val ourStateRef = stx.inputs.single()
                     val ourStateAndRef: StateAndRef<MarketTimeState> = serviceHub.toStateAndRef<MarketTimeState>(ourStateRef)
-                    val inputstate = ourStateAndRef.state.data
-                    "MarketTime value in the previous (Input) state must be equal to 2" using(inputstate.marketTime == 2)
+                    val inputState = ourStateAndRef.state.data
+                    "MarketTime value in the previous (Input) state must be equal to 2" using(inputState.marketTime == 2)
 
                     "The MarketTime value after Reset must be equal to 0" using (output.marketTime == 0 )
                     //A MarketTime Value other than 0 should not be possible since this is the Reset flow
 
-                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(output.marketClock == inputstate.marketClock + 1)
+                    "marketClock value in the output State must be 1 unit greater than the one in the input state" using(output.marketClock == inputState.marketClock + 1)
 
                 }
             }
