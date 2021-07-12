@@ -3,6 +3,7 @@ package com.template.webserver
 import de.tum.best.flows.*
 import de.tum.best.states.ListingState
 import de.tum.best.states.MarketTimeState
+import de.tum.best.states.MatchingState
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
@@ -42,6 +43,11 @@ class Controller(rpc: NodeRPCConnection) {
     @GetMapping(value = ["listings"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getListings(): ResponseEntity<List<StateAndRef<ListingState>>> {
         return ResponseEntity.ok(proxy.vaultQueryBy<ListingState>().states)
+    }
+
+    @GetMapping(value = ["matchings"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getMatchings(): ResponseEntity<List<StateAndRef<MatchingState>>> {
+        return ResponseEntity.ok(proxy.vaultQueryBy<MatchingState>().states)
     }
 
     @GetMapping(value = ["market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
