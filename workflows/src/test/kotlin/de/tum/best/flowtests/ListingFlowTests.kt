@@ -58,7 +58,7 @@ class ListingFlowTests {
         )
         val marketTimeFuture = a.startFlow(initiateMarketTimeFlow)
         network.runNetwork()
-        val marketTimeTransaction = marketTimeFuture.getOrThrow()
+        marketTimeFuture.getOrThrow()
 
         val listingFlow = ListingFlowInitiator(
             ElectricityType.Renewable,
