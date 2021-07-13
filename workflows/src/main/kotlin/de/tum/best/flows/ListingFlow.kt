@@ -74,6 +74,7 @@ class ListingFlowInitiator(private val electricityType: ElectricityType,
 
     override val progressTracker = tracker()
 
+    @Suspendable
     override fun call(): SignedTransaction {
 
         // 1.Step: Fetch our address
@@ -119,9 +120,13 @@ class ListingFlowInitiator(private val electricityType: ElectricityType,
 
         // 5.Step: Collect the other party's signature using the SignTransactionFlow.
         progressTracker.currentStep = STEP_COLLECT_SIG
-        val otherParties: MutableList<Party> = listing.participants.stream().map { el: AbstractParty? -> el as Party? }.collect(Collectors.toList())
-        otherParties.remove(ourIdentity)
-        val sessions = otherParties.stream().map { el: Party? -> initiateFlow(el!!) }.collect(Collectors.toList())
+        val sessions = listing.participants.map {
+            it as Party
+        }.filterNot {
+            it == ourIdentity
+        }.map {
+            initiateFlow(it)
+        }
 
         val signedListingTx = subFlow(CollectSignaturesFlow(partiallySignedListingTx, sessions))
 
