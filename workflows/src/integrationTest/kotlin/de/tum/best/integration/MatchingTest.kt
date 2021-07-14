@@ -1,19 +1,16 @@
 package de.tum.best.integration
 
+import de.tum.best.flows.BroadcastTransactionFlow
 import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.ListingFlowInitiator
-import de.tum.best.states.ElectricityType
-import de.tum.best.states.ListingState
-import de.tum.best.states.ListingType
-import de.tum.best.states.MarketTimeState
+import de.tum.best.flows.MatchingFlow
+import de.tum.best.states.*
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
-import net.corda.core.messaging.vaultTrackBy
+import net.corda.core.messaging.vaultQueryBy
 import net.corda.core.utilities.getOrThrow
 import net.corda.testing.core.TestIdentity
-import net.corda.testing.core.expect
-import net.corda.testing.core.expectEvents
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.driver.DriverDSL
 import net.corda.testing.driver.DriverParameters
@@ -26,18 +23,23 @@ import kotlin.test.assertEquals
 
 class MatchingTest {
 
-    private val identityA = TestIdentity(CordaX500Name("PartyA", "", "GB"))
-    private val identityB = TestIdentity(CordaX500Name("mister matching", "", "US"))
-    private val identities = listOf(identityA, identityB)
-    private val rpcUserA = User("userA", "password1", permissions = setOf("ALL"))
-    private val rpcUserB = User("userB", "password2", permissions = setOf("ALL"))
-    private val identityUserMap = mapOf(identityA to rpcUserA, identityB to rpcUserB)
+    private val identities = listOf(
+        TestIdentity(CordaX500Name("PartyA", "", "GB")),
+        TestIdentity(CordaX500Name("mister matching", "", "US")),
+        TestIdentity(CordaX500Name("PartyC", "", "DE"))
+    )
+    private val rpcUsers = listOf(
+        User("userA", "password1", permissions = setOf("ALL")),
+        User("userB", "password2", permissions = setOf("ALL")),
+        User("userC", "password3", permissions = setOf("ALL"))
+    )
+    private val identityUserMap = (identities zip rpcUsers).toMap()
 
 
     @Test
-    fun `listing flow records listing`() = withDriver {
+    fun `single producer and consumer listing are matched`() = withDriver {
         // Start a pair of nodes and wait for them both to be ready.
-        val parties = identities
+        val nodeHandles = identities
             .map {
                 startNode(
                     NodeParameters(
@@ -50,44 +52,59 @@ class MatchingTest {
             }
             .map { it.getOrThrow() }
 
-        val clients = parties.map { CordaRPCClient(it.rpcAddress) }
+        val clients = nodeHandles.map { CordaRPCClient(it.rpcAddress) }
         val proxies = (identities zip clients).map {
             val user =
                 identityUserMap[it.first] ?: throw IllegalArgumentException("Identity ${it.first} could not be found")
             it.second.start(user.username, user.password).proxy
         }
 
-        val marketTimeUpdates = proxies.map { it.vaultTrackBy<MarketTimeState>().updates }
-        val listingUpdates = proxies.map { it.vaultTrackBy<ListingState>().updates }
-
-        proxies[0].startTrackedFlow(
+        val signedMarketTimeTransaction = proxies[0].startTrackedFlow(
             InitiateMarketTimeFlow::Initiator,
-            parties[1].nodeInfo.singleIdentity()
+            nodeHandles[1].nodeInfo.singleIdentity()
         ).returnValue.getOrThrow()
 
-        marketTimeUpdates[0].expectEvents {
-            expect { update ->
-                println("A got vault update of $update")
-                assertEquals(1, update.produced.first().state.data.marketTime)
-            }
-        }
+        assertEquals(1, proxies[0].vaultQueryBy<MarketTimeState>().states.first().state.data.marketTime)
+
+        proxies[0].startTrackedFlow(
+            ::BroadcastTransactionFlow,
+            signedMarketTimeTransaction
+        ).returnValue.getOrThrow()
 
         proxies[0].startTrackedFlow(
             ::ListingFlowInitiator,
             ElectricityType.Renewable,
             5,
             3,
-            parties[1].nodeInfo.singleIdentity(),
+            nodeHandles[1].nodeInfo.singleIdentity(),
             ListingType.ProducerListing
         ).returnValue.getOrThrow()
 
-        listingUpdates[0].expectEvents {
-            expect { update ->
-                println("A got vault update of $update")
-                assertEquals(5, update.produced.first().state.data.unitPrice)
-            }
-        }
+        assertEquals(5, proxies[0].vaultQueryBy<ListingState>().states.first().state.data.unitPrice)
 
+        proxies[2].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            7,
+            3,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ConsumerListing
+        ).returnValue.getOrThrow()
+
+        assertEquals(7, proxies[1].vaultQueryBy<ListingState>().states.last().state.data.unitPrice)
+
+        proxies[1].startTrackedFlow(
+            MatchingFlow::Initiator
+        ).returnValue.getOrThrow()
+
+        proxies.forEach {
+            val matchingState = it.vaultQueryBy<MatchingState>().states.single().state.data
+            assertEquals(nodeHandles[0].nodeInfo.singleIdentity(), matchingState.seller)
+            assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), matchingState.matcher)
+            assertEquals(nodeHandles[2].nodeInfo.singleIdentity(), matchingState.buyer)
+            assertEquals(5, matchingState.unitPrice)
+            assertEquals(3, matchingState.unitAmount)
+        }
     }
 
     private fun withDriver(test: DriverDSL.() -> Unit) = driver(
