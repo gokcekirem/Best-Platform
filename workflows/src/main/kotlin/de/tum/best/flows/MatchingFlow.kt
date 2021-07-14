@@ -71,39 +71,42 @@ object MatchingFlow {
 
                 val sortedProducersByReference = producersByPreference.sortedBy { it.state.data.unitPrice }
 
-                val sortedProducerStates = sortedProducersByReference.map { it.state.data }
-                val consumerStates = consumersByPreference.map { it.state.data }
+                // TODO What happens if only one of these lists is empty?
+                if (producersByPreference.any() && consumersByPreference.any()) {
+                    val sortedProducerStates = sortedProducersByReference.map { it.state.data }
+                    val consumerStates = consumersByPreference.map { it.state.data }
 
-                progressTracker.currentStep = CALCULATING_UNIT_PRICE
+                    progressTracker.currentStep = CALCULATING_UNIT_PRICE
 
-                val producerEnergySum = sortedProducerStates.map { it.amount }.sum()
-                val consumerEnergySum = consumerStates.map { it.amount }.sum()
+                    val producerEnergySum = sortedProducerStates.map { it.amount }.sum()
+                    val consumerEnergySum = consumerStates.map { it.amount }.sum()
 
-                // Calculate the Merit Order Price
-                val unitPrice = if (consumerEnergySum > producerEnergySum) {
-                    sortedProducerStates.map { it.unitPrice }.max()
-                        ?: throw IllegalArgumentException("The producer state list should not be empty")
-                } else {
-                    val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
-                    { list, state -> list.plus(list.last() + state.amount) }
-                    val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
-                    val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
-                    participatingProducerStates.last().unitPrice
-                }
-                //TODO progressTracker within loops?
-                progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
-
-                // Creates matches from client listings and adds them to the global matchings hashset
-                // Returns un matched listings that should be matched to the retailer
-                matchListings(
-                    unitPrice,
-                    sortedProducersByReference.toMutableList(),
-                    consumersByPreference.sortedByDescending { it.state.data.unitPrice }.toMutableList()
-                )
-                    // Create matches with the retailer
-                    .forEach { unmatchedListing ->
-                        matchWithRetailer(unmatchedListing, unitPrice)
+                    // Calculate the Merit Order Price
+                    val unitPrice = if (consumerEnergySum >= producerEnergySum) {
+                        sortedProducerStates.map { it.unitPrice }.max()
+                            ?: throw IllegalArgumentException("The producer state list should not be empty")
+                    } else {
+                        val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
+                        { list, state -> list.plus(list.lastOrNull() ?: 0 + state.amount) }
+                        val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
+                        val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
+                        participatingProducerStates.last().unitPrice
                     }
+                    //TODO progressTracker within loops?
+                    progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
+
+                    // Creates matches from client listings and adds them to the global matchings hashset
+                    // Returns un matched listings that should be matched to the retailer
+                    matchListings(
+                        unitPrice,
+                        sortedProducersByReference.toMutableList(),
+                        consumersByPreference.sortedByDescending { it.state.data.unitPrice }.toMutableList()
+                    )
+                        // Create matches with the retailer
+                        .forEach { unmatchedListing ->
+                            matchWithRetailer(unmatchedListing, unitPrice)
+                        }
+                }
             }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS

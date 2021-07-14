@@ -34,6 +34,7 @@ class ListingContract : Contract {
             is Commands.ConsumerListing -> verifyConsumerListings(outputs)
             is Commands.ProducerListing -> verifyProducerListings(outputs)
             is Commands.SplitTx -> verifySplitListing(tx, tx.inputsOfType(), outputs)
+            is Commands.MatchListing -> return
             else -> throw IllegalArgumentException("Unknown command!")
         }
     }
@@ -86,5 +87,6 @@ class ListingContract : Contract {
         class ConsumerListing : Commands
         class ProducerListing : Commands
         class SplitTx : Commands
+        class MatchListing : Commands
     }
 }

@@ -1,6 +1,7 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import de.tum.best.contracts.ListingContract
 import de.tum.best.states.ListingState
 import de.tum.best.contracts.MatchingContract
 import de.tum.best.states.MatchingState
@@ -61,12 +62,16 @@ object SingleMatchingFlow {
                 producer,
                 serviceHub.myInfo.legalIdentities.first()
             )
-            val txCommand = Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
+            val matchingCommand =
+                Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
+            val listingCommand =
+                Command(ListingContract.Commands.MatchListing(), matchingState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
                 .addInputState(producerStateAndRef)
                 .addInputState(consumerStateAndRef)
                 .addOutputState(matchingState, MatchingContract.ID)
-                .addCommand(txCommand)
+                .addCommand(matchingCommand)
+                .addCommand(listingCommand)
 
             // Stage 2.
             progressTracker.currentStep = VERIFYING_TRANSACTION
