@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.SendTransactionFlow
+import net.corda.core.flows.StartableByRPC
 import net.corda.core.transactions.SignedTransaction
 
 /**
@@ -11,6 +12,7 @@ import net.corda.core.transactions.SignedTransaction
  * remaining identities.
  */
 @InitiatingFlow
+@StartableByRPC
 class BroadcastTransactionFlow(val stx: SignedTransaction) : FlowLogic<Unit>() {
 
     @Suspendable

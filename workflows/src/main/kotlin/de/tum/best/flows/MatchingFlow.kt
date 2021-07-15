@@ -63,47 +63,53 @@ object MatchingFlow {
             // Iterate over consumer/producer preferences
             // Calculate merit order price for each preference
             // Create matchings accordingly
-            for (electricityPreference in ElectricityType.values()){
-                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
+            for (electricityPreference in ElectricityType.values()) {
+                val listingsByPreference =
+                    listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
 
-                val producersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
-                val consumersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
+                val producersByPreference =
+                    listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
+                val consumersByPreference =
+                    listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
                 val sortedProducersByReference = producersByPreference.sortedBy { it.state.data.unitPrice }
 
-                val sortedProducerStates = sortedProducersByReference.map { it.state.data }
-                val consumerStates = consumersByPreference.map { it.state.data }
+                // TODO What happens if only one of these lists is empty?
+                if (producersByPreference.any() && consumersByPreference.any()) {
+                    val sortedProducerStates = sortedProducersByReference.map { it.state.data }
+                    val consumerStates = consumersByPreference.map { it.state.data }
 
-                progressTracker.currentStep = CALCULATING_UNIT_PRICE
+                    progressTracker.currentStep = CALCULATING_UNIT_PRICE
 
-                val producerEnergySum = sortedProducerStates.map { it.amount }.sum()
-                val consumerEnergySum = consumerStates.map { it.amount }.sum()
+                    val producerEnergySum = sortedProducerStates.map { it.amount }.sum()
+                    val consumerEnergySum = consumerStates.map { it.amount }.sum()
 
-                // Calculate the Merit Order Price
-                val unitPrice = if (consumerEnergySum > producerEnergySum) {
-                    sortedProducerStates.map { it.unitPrice }.max()
-                        ?: throw IllegalArgumentException("The producer state list should not be empty")
-                } else {
-                    val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
-                    { list, state -> list.plus(list.last() + state.amount) }
-                    val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
-                    val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
-                    participatingProducerStates.last().unitPrice
-                }
-                //TODO progressTracker within loops?
-                progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
-
-                // Creates matches from client listings and adds them to the global matchings hashset
-                // Returns un matched listings that should be matched to the retailer
-                matchListings(
-                    unitPrice,
-                    sortedProducersByReference.toMutableList(),
-                    consumersByPreference.sortedByDescending { it.state.data.unitPrice }.toMutableList()
-                )
-                    // Create matches with the retailer
-                    .forEach { unmatchedListing ->
-                        matchWithRetailer(unmatchedListing, unitPrice)
+                    // Calculate the Merit Order Price
+                    val unitPrice = if (consumerEnergySum >= producerEnergySum) {
+                        sortedProducerStates.map { it.unitPrice }.max()
+                            ?: throw IllegalArgumentException("The producer state list should not be empty")
+                    } else {
+                        val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
+                        { list, state -> list.plus(list.lastOrNull() ?: 0 + state.amount) }
+                        val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
+                        val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
+                        participatingProducerStates.last().unitPrice
                     }
+                    //TODO progressTracker within loops?
+                    progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
+
+                    // Creates matches from client listings and adds them to the global matchings hashset
+                    // Returns un matched listings that should be matched to the retailer
+                    matchListings(
+                        unitPrice,
+                        sortedProducersByReference.toMutableList(),
+                        consumersByPreference.sortedByDescending { it.state.data.unitPrice }.toMutableList()
+                    )
+                        // Create matches with the retailer
+                        .forEach { unmatchedListing ->
+                            matchWithRetailer(unmatchedListing, unitPrice)
+                        }
+                }
             }
 
             progressTracker.currentStep = EXECUTING_SINGLE_MATCHING_FLOWS
@@ -120,6 +126,7 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchListings(
             unitPrice: Int,
             producerStates: MutableList<StateAndRef<ListingState>>,
@@ -162,6 +169,7 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchWithDifferentAmount(
             producerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
             consumerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
@@ -191,10 +199,15 @@ object MatchingFlow {
             )
             // Get the 2 newly created states
             val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-            val higherRequiredListingStateAndRef =
-                splitListingsStateAndRef.single { it.state.data.amount == lowerAmount }
-            val higherRemainingListingStateAndRef =
-                splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+            val (higherRequiredListingStateAndRef, higherRemainingListingStateAndRef) =
+                if (lowerAmount == remainderAmount) {
+                    Pair(splitListingsStateAndRef.first(), splitListingsStateAndRef.last())
+                } else {
+                    Pair(
+                        splitListingsStateAndRef.single { it.state.data.amount == lowerAmount },
+                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+                    )
+                }
 
             matchings.apply {
                 add(
@@ -216,11 +229,12 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
 
             // Penalty awarded to un-matched listings
-            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2  else 2
+            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2 else 2
 
             // Create new listing for the retailer
             val retailerSignedTx = subFlow(

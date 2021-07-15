@@ -1,6 +1,7 @@
 package de.tum.best.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import de.tum.best.contracts.ListingContract
 import de.tum.best.states.ListingState
 import de.tum.best.contracts.MatchingContract
 import de.tum.best.states.MatchingState
@@ -55,18 +56,23 @@ object SingleMatchingFlow {
             // Generate an unsigned transaction.
             val consumer = consumerStateAndRef.state.data.sender
             val producer = producerStateAndRef.state.data.sender
+            val matcher = serviceHub.myInfo.legalIdentities.first()
             val matchingState = MatchingState(
                 unitPrice, unitAmount,
                 consumer,
                 producer,
-                serviceHub.myInfo.legalIdentities.first()
+                matcher
             )
-            val txCommand = Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
+            val matchingCommand =
+                Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
+            val listingCommand =
+                Command(ListingContract.Commands.MatchListing(), matchingState.participants.map { it.owningKey })
             val txBuilder = TransactionBuilder(notary)
                 .addInputState(producerStateAndRef)
                 .addInputState(consumerStateAndRef)
                 .addOutputState(matchingState, MatchingContract.ID)
-                .addCommand(txCommand)
+                .addCommand(matchingCommand)
+                .addCommand(listingCommand)
 
             // Stage 2.
             progressTracker.currentStep = VERIFYING_TRANSACTION
@@ -80,13 +86,12 @@ object SingleMatchingFlow {
 
             // Stage 4.
             progressTracker.currentStep = GATHERING_SIGS
-            val consumerSession = initiateFlow(consumer)
-            val producerSession = initiateFlow(producer)
+            val sessions = (setOf(consumer, producer) - matcher).map { initiateFlow(it) }
             // Send the state to the counterparty, and receive it back with their signature.
             val fullySignedTx = subFlow(
                 CollectSignaturesFlow(
                     partSignedTx,
-                    setOf(consumerSession, producerSession),
+                    sessions,
                     GATHERING_SIGS.childProgressTracker()
                 )
             )
@@ -97,7 +102,7 @@ object SingleMatchingFlow {
             return subFlow(
                 FinalityFlow(
                     fullySignedTx,
-                    setOf(consumerSession, producerSession),
+                    sessions,
                     FINALISING_TRANSACTION.childProgressTracker()
                 )
             )

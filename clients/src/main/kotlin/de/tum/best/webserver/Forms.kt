@@ -1,6 +1,7 @@
-package com.template.webserver
+package de.tum.best.webserver
 
-import de.tum.best.states.ListingTypes
+import de.tum.best.states.ElectricityType
+import de.tum.best.states.ListingType
 
 class Forms {
 
@@ -9,10 +10,10 @@ class Forms {
     )
 
     data class ListingForm(
-        val electricityType : Int,
+        val electricityType : ElectricityType,
         val unitPrice: Int,
         val amount: Int,
         val matcherName: String,
-        val transactionType: ListingTypes
+        val transactionType: ListingType
     )
 }

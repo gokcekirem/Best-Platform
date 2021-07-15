@@ -88,7 +88,7 @@ class MarketTimeFlowTests {
 
         // We check the recorded transaction in both transaction storages.
         for (node in listOf(a, b)) {
-            assertEquals(signedTx, node.services.validatedTransactions.getTransaction(signedTx.id))
+            assertEquals(node.services.validatedTransactions.getTransaction(signedTx.id), signedTx)
         }
     }
 
@@ -108,10 +108,10 @@ class MarketTimeFlowTests {
                 val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
                 assertEquals(1, marketTimeStates.size)
                 val recordedState = marketTimeStates.single().state.data
-                assertEquals(recordedState.marketClock, outputMarketClock)
-                assertEquals(recordedState.marketTime, outputMarketTime)
-                assertEquals(recordedState.sender, a.info.singleIdentity())
-                assertEquals(recordedState.receiver, b.info.singleIdentity())
+                assertEquals(outputMarketClock, recordedState.marketClock)
+                assertEquals(outputMarketTime, recordedState.marketTime)
+                assertEquals(a.info.singleIdentity(), recordedState.sender)
+                assertEquals(b.info.singleIdentity(), recordedState.receiver)
             }
         }
     }
@@ -162,7 +162,7 @@ class MarketTimeFlowTests {
 
         // We check the recorded transaction in both transaction storages.
         for (node in listOf(a, b)) {
-            assertEquals(signedTx, node.services.validatedTransactions.getTransaction(signedTx.id))
+            assertEquals(node.services.validatedTransactions.getTransaction(signedTx.id), signedTx)
         }
     }
 
@@ -188,10 +188,10 @@ class MarketTimeFlowTests {
                 val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
                 assertEquals(1, marketTimeStates.size)
                 val recordedState = marketTimeStates.single().state.data
-                assertEquals(recordedState.marketClock, outputMarketClock)
-                assertEquals(recordedState.marketTime, outputMarketTime)
-                assertEquals(recordedState.sender, a.info.singleIdentity())
-                assertEquals(recordedState.receiver, b.info.singleIdentity())
+                assertEquals(outputMarketClock, recordedState.marketClock)
+                assertEquals(outputMarketTime, recordedState.marketTime)
+                assertEquals(a.info.singleIdentity(), recordedState.sender)
+                assertEquals(b.info.singleIdentity(), recordedState.receiver)
             }
         }
 
@@ -251,7 +251,7 @@ class MarketTimeFlowTests {
 
         // We check the recorded transaction in both transaction storages.
         for (node in listOf(a, b)) {
-            assertEquals(signedTx, node.services.validatedTransactions.getTransaction(signedTx.id))
+            assertEquals(node.services.validatedTransactions.getTransaction(signedTx.id), signedTx)
         }
     }
 
@@ -280,10 +280,10 @@ class MarketTimeFlowTests {
                 val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
                 assertEquals(1, marketTimeStates.size)
                 val recordedState = marketTimeStates.single().state.data
-                assertEquals(recordedState.marketClock, outputMarketClock)
-                assertEquals(recordedState.marketTime, outputMarketTime)
-                assertEquals(recordedState.sender, a.info.singleIdentity())
-                assertEquals(recordedState.receiver, b.info.singleIdentity())
+                assertEquals(outputMarketClock, recordedState.marketClock)
+                assertEquals(outputMarketTime, recordedState.marketTime)
+                assertEquals(a.info.singleIdentity(), recordedState.sender)
+                assertEquals(b.info.singleIdentity(), recordedState.receiver)
             }
         }
 
@@ -326,10 +326,10 @@ class MarketTimeFlowTests {
                 val marketTimeStates = node.services.vaultService.queryBy<MarketTimeState>().states
                 assertEquals(1, marketTimeStates.size)
                 val recordedState = marketTimeStates.single().state.data
-                assertEquals(recordedState.marketClock, outputMarketClock)
-                assertEquals(recordedState.marketTime, outputMarketTime)
-                assertEquals(recordedState.sender, a.info.singleIdentity())
-                assertEquals(recordedState.receiver, b.info.singleIdentity())
+                assertEquals(outputMarketClock, recordedState.marketClock)
+                assertEquals(outputMarketTime, recordedState.marketTime)
+                assertEquals(a.info.singleIdentity(), recordedState.sender)
+                assertEquals(b.info.singleIdentity(), recordedState.receiver)
             }
         }
 

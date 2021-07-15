@@ -9,8 +9,6 @@ import net.corda.core.flows.CollectSignaturesFlow
 
 import net.corda.core.transactions.SignedTransaction
 
-import java.util.stream.Collectors
-
 import net.corda.core.flows.FlowSession
 
 import net.corda.core.identity.Party
@@ -24,7 +22,6 @@ import de.tum.best.states.ListingState
 import de.tum.best.states.ListingType
 import de.tum.best.states.MarketTimeState
 import net.corda.core.contracts.requireThat
-import net.corda.core.identity.AbstractParty
 import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
@@ -32,7 +29,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 /**
  * Listing Flow *
  * Listing flow handles the creation of new listings in the marketplace
-*/
+ */
 
 /**
  * ListingFlowInitiator initiator is used in order to start the listing creation process
@@ -42,15 +39,16 @@ import net.corda.core.node.services.vault.QueryCriteria
  *@param amount The amount of electricity this transaction is for
  *@param matcher ID of the matching service node
  *@param transactionType Determines the type of the listing (1 -> ProducerListing, 0 -> ConsumerListing)
-*/
+ */
 @InitiatingFlow
 @StartableByRPC
-class ListingFlowInitiator(private val electricityType: ElectricityType,
-                           private val unitPrice: Int,
-                           private val amount: Int,
-                           private val matcher: Party,
-                           private val transactionType: ListingType
-): FlowLogic<SignedTransaction>() {
+class ListingFlowInitiator(
+    private val electricityType: ElectricityType,
+    private val unitPrice: Int,
+    private val amount: Int,
+    private val matcher: Party,
+    private val transactionType: ListingType
+) : FlowLogic<SignedTransaction>() {
 
     companion object {
         object STEP_ID : ProgressTracker.Step("1. Fetching our identity")
@@ -74,6 +72,7 @@ class ListingFlowInitiator(private val electricityType: ElectricityType,
 
     override val progressTracker = tracker()
 
+    @Suspendable
     override fun call(): SignedTransaction {
 
         // 1.Step: Fetch our address
@@ -102,12 +101,18 @@ class ListingFlowInitiator(private val electricityType: ElectricityType,
         val listing = ListingState(transactionType, electricityType, unitPrice, amount, sender, matcher, marketClock)
         val listingBuilder = TransactionBuilder(notary)
 
-        if(transactionType == ListingType.ProducerListing){
+        if (transactionType == ListingType.ProducerListing) {
             // Transaction is of type ProducerListing
-            listingBuilder.addCommand(ListingContract.Commands.ProducerListing(), listOf(sender.owningKey, matcher.owningKey))
+            listingBuilder.addCommand(
+                ListingContract.Commands.ProducerListing(),
+                listOf(sender.owningKey, matcher.owningKey)
+            )
         } else {
             // Note that this else defaults any errors in transactionType to ConsumerListing
-            listingBuilder.addCommand(ListingContract.Commands.ConsumerListing(), listOf(sender.owningKey, matcher.owningKey))
+            listingBuilder.addCommand(
+                ListingContract.Commands.ConsumerListing(),
+                listOf(sender.owningKey, matcher.owningKey)
+            )
         }
 
         listingBuilder.addOutputState(listing)
@@ -119,9 +124,13 @@ class ListingFlowInitiator(private val electricityType: ElectricityType,
 
         // 5.Step: Collect the other party's signature using the SignTransactionFlow.
         progressTracker.currentStep = STEP_COLLECT_SIG
-        val otherParties: MutableList<Party> = listing.participants.stream().map { el: AbstractParty? -> el as Party? }.collect(Collectors.toList())
-        otherParties.remove(ourIdentity)
-        val sessions = otherParties.stream().map { el: Party? -> initiateFlow(el!!) }.collect(Collectors.toList())
+        val sessions = listing.participants.map {
+            it as Party
+        }.filterNot {
+            it == ourIdentity
+        }.map {
+            initiateFlow(it)
+        }
 
         val signedListingTx = subFlow(CollectSignaturesFlow(partiallySignedListingTx, sessions))
 
@@ -141,7 +150,14 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
                 //TODO: Also can we just call contract to do sanity check or do we need to verify each field again
-                "This node is not authorized to perform matching".using(ourIdentity.name.toString().contains("Matching", ignoreCase = true))
+                val ourName = ourIdentity.name.toString()
+                "This node with name $ourName is not authorized to perform matching."
+                    .using(
+                        ourName.contains(
+                            "Matching",
+                            ignoreCase = true
+                        )
+                    )
                 "Clocks must match!".using(clockSyncVerifier(stx))
             }
         }
@@ -159,6 +175,6 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
         //Get listing object from the signed transaction
         return stx.tx.outputsOfType<ListingState>()
             //Perform check for all listings in the transaction
-            .all {  it.marketClock == timeQuery }
+            .all { it.marketClock == timeQuery }
     }
 }
