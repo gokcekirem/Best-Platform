@@ -50,6 +50,11 @@ class Controller(rpc: NodeRPCConnection) {
         return ResponseEntity.ok(proxy.vaultQueryBy<MatchingState>().states)
     }
 
+    @GetMapping(value = ["name"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getName(): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.ok(mapOf("name" to proxy.nodeInfo().legalIdentities.single().name.organisation))
+    }
+
     @GetMapping(value = ["market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMarketTime(): ResponseEntity<StateAndRef<MarketTimeState>> {
         val nullableMarketTimeState = proxy.vaultQueryBy<MarketTimeState>().states.singleOrNull()
