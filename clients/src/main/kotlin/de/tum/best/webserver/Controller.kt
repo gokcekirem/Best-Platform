@@ -139,16 +139,13 @@ class Controller(rpc: NodeRPCConnection) {
     }
 
     @PostMapping(value = ["match"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun initiateMatching(): ResponseEntity<Map<String, List<String>>> {
+    fun initiateMatching(): ResponseEntity<Collection<SignedTransaction>> {
         return try {
             val signedTxs = proxy.startTrackedFlow(MatchingFlow::Initiator).returnValue.getOrThrow()
-            ResponseEntity.status(HttpStatus.CREATED).body(
-                mapOf("createdTransactions" to
-                        signedTxs.map { "Transaction id ${it.id} committed to ledger" })
-            )
+            ResponseEntity.status(HttpStatus.CREATED).body(signedTxs)
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
-            ResponseEntity.badRequest().body(mapOf("error" to listOf(ex.message!!)))
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message, ex)
         }
     }
 
