@@ -9,6 +9,7 @@ import net.corda.core.contracts.StateAndRef
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.messaging.vaultQueryBy
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,6 +19,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ResponseStatusException
 
 /**
  * Define your API endpoints here.
@@ -40,19 +42,33 @@ class Controller(rpc: NodeRPCConnection) {
 
     private val proxy = rpc.proxy
 
+    private fun <T> tryFunctionAndRethrowError(function: () -> ResponseEntity<T>): ResponseEntity<T> {
+        try {
+            return function()
+        } catch (ex: Throwable) {
+            throw ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred with the message '${ex.message}'",
+                ex
+            )
+        }
+    }
+
     @GetMapping(value = ["listings"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getListings(): ResponseEntity<List<StateAndRef<ListingState>>> {
-        return ResponseEntity.ok(proxy.vaultQueryBy<ListingState>().states)
+        return tryFunctionAndRethrowError { ResponseEntity.ok(proxy.vaultQueryBy<ListingState>().states) }
     }
 
     @GetMapping(value = ["matchings"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMatchings(): ResponseEntity<List<StateAndRef<MatchingState>>> {
-        return ResponseEntity.ok(proxy.vaultQueryBy<MatchingState>().states)
+        return tryFunctionAndRethrowError { ResponseEntity.ok(proxy.vaultQueryBy<MatchingState>().states) }
     }
 
     @GetMapping(value = ["name"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getName(): ResponseEntity<Map<String, String>> {
-        return ResponseEntity.ok(mapOf("name" to proxy.nodeInfo().legalIdentities.single().name.organisation))
+        return tryFunctionAndRethrowError {
+            ResponseEntity.ok(mapOf("name" to proxy.nodeInfo().legalIdentities.single().name.organisation))
+        }
     }
 
     @GetMapping(value = ["market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -61,7 +77,7 @@ class Controller(rpc: NodeRPCConnection) {
         return if (nullableMarketTimeState != null) {
             ResponseEntity.ok(nullableMarketTimeState)
         } else {
-            ResponseEntity.notFound().build()
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "The market time could not be found")
         }
     }
 
@@ -71,29 +87,31 @@ class Controller(rpc: NodeRPCConnection) {
         RESET_FLOW
     }
 
-    @PostMapping(value = ["clear-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
-    fun clearMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+    @PostMapping(value = ["clear-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun clearMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.CLEAR_FLOW)
     }
 
-    @PostMapping(value = ["initiate-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
-    fun initiateMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+    @PostMapping(value = ["initiate-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun initiateMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.INITIATE_FLOW)
     }
 
-    @PostMapping(value = ["reset-market-time"], produces = [MediaType.TEXT_PLAIN_VALUE])
-    fun resetMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<String> {
+    @PostMapping(value = ["reset-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun resetMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.RESET_FLOW)
     }
 
     private fun startMarketTimeFlow(
         marketTimeForm: Forms.MarketTimeForm,
         flowType: MarketTimeFlow
-    ): ResponseEntity<String> {
+    ): ResponseEntity<SignedTransaction> {
         val partyName = marketTimeForm.partyName
         val partyX500Name = CordaX500Name.parse(partyName)
-        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: return ResponseEntity.badRequest()
-            .body("Party named $partyName cannot be found.\n")
+        val otherParty = proxy.wellKnownPartyFromX500Name(partyX500Name) ?: throw ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Party named $partyName cannot be found."
+        )
 
         return try {
             // This funky stuff with the Enum has to be performed, because Corda does not want to start the flow
@@ -113,10 +131,10 @@ class Controller(rpc: NodeRPCConnection) {
                     otherParty
                 ).returnValue.getOrThrow()
             }
-            ResponseEntity.status(HttpStatus.CREATED).body("Transaction id ${signedTx.id} committed to ledger.\n")
+            ResponseEntity.status(HttpStatus.CREATED).body(signedTx)
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
-            ResponseEntity.badRequest().body(ex.message!!)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message, ex)
         }
     }
 
@@ -134,12 +152,14 @@ class Controller(rpc: NodeRPCConnection) {
         }
     }
 
-    @PostMapping(value = ["create-listing"], produces = [MediaType.TEXT_PLAIN_VALUE])
-    fun createListing(@RequestBody listingForm: Forms.ListingForm): ResponseEntity<String> {
+    @PostMapping(value = ["create-listing"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun createListing(@RequestBody listingForm: Forms.ListingForm): ResponseEntity<SignedTransaction> {
         val matcherName = listingForm.matcherName
         val matcherX500Name = CordaX500Name.parse(matcherName)
-        val matcherParty = proxy.wellKnownPartyFromX500Name(matcherX500Name) ?: return ResponseEntity.badRequest()
-            .body("Matcher named $matcherName cannot be found.\n")
+        val matcherParty = proxy.wellKnownPartyFromX500Name(matcherX500Name) ?: throw ResponseStatusException(
+            HttpStatus.BAD_REQUEST,
+            "Matcher named $matcherName cannot be found."
+        )
 
         return try {
             val signedTx = proxy.startTrackedFlow(
@@ -150,10 +170,10 @@ class Controller(rpc: NodeRPCConnection) {
                 matcherParty,
                 listingForm.transactionType
             ).returnValue.getOrThrow()
-            ResponseEntity.status(HttpStatus.CREATED).body("Listing with id ${signedTx.id} committed to ledger.\n")
+            ResponseEntity.status(HttpStatus.CREATED).body(signedTx)
         } catch (ex: Throwable) {
             logger.error(ex.message, ex)
-            ResponseEntity.badRequest().body(ex.message!!)
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, ex.message, ex)
         }
     }
 }
