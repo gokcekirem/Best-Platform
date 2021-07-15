@@ -75,17 +75,12 @@ class MatchingTest {
         proxies: List<CordaRPCOps>,
         nodeHandles: List<NodeHandle>
     ) {
-        val signedMarketTimeTransaction = proxies[0].startTrackedFlow(
+        proxies[0].startTrackedFlow(
             InitiateMarketTimeFlow::Initiator,
             nodeHandles[1].nodeInfo.singleIdentity()
         ).returnValue.getOrThrow()
 
         assertEquals(1, proxies[0].vaultQueryBy<MarketTimeState>().states.first().state.data.marketTime)
-
-        proxies[0].startTrackedFlow(
-            ::BroadcastTransactionFlow,
-            signedMarketTimeTransaction
-        ).returnValue.getOrThrow()
     }
 
     @Test

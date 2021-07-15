@@ -41,12 +41,15 @@ object ClearMarketTimeFlow {
                 override fun childProgressTracker() = FinalityFlow.tracker()
             }
 
+            object BROADCAST_TX : ProgressTracker.Step("Broadcast transaction to all nodes")
+
             fun tracker() = ProgressTracker(
                 GENERATINGTRANSACTION,
                 VERIFYINGTRANSACTION,
                 SIGNINGTRANSACTION,
                 GATHERINGSIGS,
-                FINALISINGTRANSACTION
+                FINALISINGTRANSACTION,
+                BROADCAST_TX
             )
         }
 
@@ -101,9 +104,17 @@ object ClearMarketTimeFlow {
             // Stage 5.
             progressTracker.currentStep = FINALISINGTRANSACTION
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(otherPartySession),
-                FINALISINGTRANSACTION.childProgressTracker()
-            ))
+            val signedTransaction = subFlow(
+                FinalityFlow(
+                    fullySignedTx, setOf(otherPartySession),
+                    FINALISINGTRANSACTION.childProgressTracker()
+                )
+            )
+
+            progressTracker.currentStep = BROADCAST_TX
+            subFlow(BroadcastTransactionFlow(signedTransaction))
+
+            return signedTransaction
         }
     }
 
