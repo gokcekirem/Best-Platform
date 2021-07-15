@@ -59,3 +59,9 @@ task runPartyBServer(type: JavaExec, dependsOn: assemble) {
     main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50006', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
+
+task runPartyCServer(type: JavaExec, dependsOn: assemble) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'de.tum.best.webserver.ServerKt'
+    args '--server.port=50007', '--config.rpc.host=localhost', '--config.rpc.port=10012', '--config.rpc.username=user1', '--config.rpc.password=test'
+}
