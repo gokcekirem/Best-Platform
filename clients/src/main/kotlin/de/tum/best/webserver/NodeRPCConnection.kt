@@ -1,4 +1,4 @@
-package com.template.webserver
+package de.tum.best.webserver
 
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.client.rpc.CordaRPCConnection
@@ -27,10 +27,10 @@ private const val CORDA_RPC_PORT = "config.rpc.port"
  */
 @Component
 open class NodeRPCConnection(
-        @Value("\${$CORDA_NODE_HOST}") private val host: String,
-        @Value("\${$CORDA_USER_NAME}") private val username: String,
-        @Value("\${$CORDA_USER_PASSWORD}") private val password: String,
-        @Value("\${$CORDA_RPC_PORT}") private val rpcPort: Int): AutoCloseable {
+    @Value("\${$CORDA_NODE_HOST}") private val host: String,
+    @Value("\${$CORDA_USER_NAME}") private val username: String,
+    @Value("\${$CORDA_USER_PASSWORD}") private val password: String,
+    @Value("\${$CORDA_RPC_PORT}") private val rpcPort: Int): AutoCloseable {
 
     lateinit var rpcConnection: CordaRPCConnection
         private set

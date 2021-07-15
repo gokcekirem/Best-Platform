@@ -26,7 +26,7 @@ dependencies {
 
 
 springBoot {
-    mainClassName = "com.template.webserver.ServerKt"
+    mainClassName = "de.tum.best.webserver.ServerKt"
 }
 
 /* The Client is the communication channel between the external and the node. This task will help you immediately
@@ -35,7 +35,7 @@ springBoot {
  */
 task runTemplateClient(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.template.ClientKt'
+    main = 'de.tum.best.ClientKt'
     args 'localhost:10006', 'user1', 'test'
 }
 
@@ -44,18 +44,18 @@ task runTemplateClient(type: JavaExec, dependsOn: assemble) {
  */
 task runTemplateServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.template.webserver.ServerKt'
+    main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=10050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
 task runPartyAServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.template.webserver.ServerKt'
+    main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50005', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
 task runPartyBServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.template.webserver.ServerKt'
+    main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50006', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
 }

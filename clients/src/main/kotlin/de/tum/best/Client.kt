@@ -1,4 +1,4 @@
-package com.template
+package de.tum.best
 
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.core.utilities.NetworkHostAndPort.Companion.parse

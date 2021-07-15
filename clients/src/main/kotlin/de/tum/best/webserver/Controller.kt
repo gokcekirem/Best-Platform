@@ -1,4 +1,4 @@
-package com.template.webserver
+package de.tum.best.webserver
 
 import de.tum.best.flows.*
 import de.tum.best.states.ListingState

@@ -4,8 +4,8 @@ cordapp {
     targetPlatformVersion corda_platform_version
     minimumPlatformVersion corda_platform_version
     contract {
-        name "Template Contracts"
-        vendor "Corda Open Source"
+        name "Best Contracts"
+        vendor "Best Energy Group"
         licence "Apache License, Version 2.0"
         versionId 1
     }
