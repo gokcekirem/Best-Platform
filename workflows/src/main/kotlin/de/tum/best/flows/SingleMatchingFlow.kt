@@ -56,11 +56,12 @@ object SingleMatchingFlow {
             // Generate an unsigned transaction.
             val consumer = consumerStateAndRef.state.data.sender
             val producer = producerStateAndRef.state.data.sender
+            val matcher = serviceHub.myInfo.legalIdentities.first()
             val matchingState = MatchingState(
                 unitPrice, unitAmount,
                 consumer,
                 producer,
-                serviceHub.myInfo.legalIdentities.first()
+                matcher
             )
             val matchingCommand =
                 Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
@@ -85,13 +86,12 @@ object SingleMatchingFlow {
 
             // Stage 4.
             progressTracker.currentStep = GATHERING_SIGS
-            val consumerSession = initiateFlow(consumer)
-            val producerSession = initiateFlow(producer)
+            val sessions = (setOf(consumer, producer) - matcher).map { initiateFlow(it) }
             // Send the state to the counterparty, and receive it back with their signature.
             val fullySignedTx = subFlow(
                 CollectSignaturesFlow(
                     partSignedTx,
-                    setOf(consumerSession, producerSession),
+                    sessions,
                     GATHERING_SIGS.childProgressTracker()
                 )
             )
@@ -102,7 +102,7 @@ object SingleMatchingFlow {
             return subFlow(
                 FinalityFlow(
                     fullySignedTx,
-                    setOf(consumerSession, producerSession),
+                    sessions,
                     FINALISING_TRANSACTION.childProgressTracker()
                 )
             )

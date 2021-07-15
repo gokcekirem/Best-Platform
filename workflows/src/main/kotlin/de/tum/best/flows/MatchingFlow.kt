@@ -63,11 +63,14 @@ object MatchingFlow {
             // Iterate over consumer/producer preferences
             // Calculate merit order price for each preference
             // Create matchings accordingly
-            for (electricityPreference in ElectricityType.values()){
-                val listingsByPreference = listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
+            for (electricityPreference in ElectricityType.values()) {
+                val listingsByPreference =
+                    listingStateAndRefs.filter { it.state.data.electricityType == electricityPreference }
 
-                val producersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
-                val consumersByPreference = listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
+                val producersByPreference =
+                    listingsByPreference.filter { it.state.data.listingType == ListingType.ProducerListing }
+                val consumersByPreference =
+                    listingsByPreference.filter { it.state.data.listingType == ListingType.ConsumerListing }
 
                 val sortedProducersByReference = producersByPreference.sortedBy { it.state.data.unitPrice }
 
@@ -123,6 +126,7 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchListings(
             unitPrice: Int,
             producerStates: MutableList<StateAndRef<ListingState>>,
@@ -165,6 +169,7 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchWithDifferentAmount(
             producerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
             consumerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
@@ -194,10 +199,15 @@ object MatchingFlow {
             )
             // Get the 2 newly created states
             val splitListingsStateAndRef = stx.toLedgerTransaction(serviceHub).outRefsOfType<ListingState>()
-            val higherRequiredListingStateAndRef =
-                splitListingsStateAndRef.single { it.state.data.amount == lowerAmount }
-            val higherRemainingListingStateAndRef =
-                splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+            val (higherRequiredListingStateAndRef, higherRemainingListingStateAndRef) =
+                if (lowerAmount == remainderAmount) {
+                    Pair(splitListingsStateAndRef.first(), splitListingsStateAndRef.last())
+                } else {
+                    Pair(
+                        splitListingsStateAndRef.single { it.state.data.amount == lowerAmount },
+                        splitListingsStateAndRef.single { it.state.data.amount == remainderAmount }
+                    )
+                }
 
             matchings.apply {
                 add(
@@ -219,11 +229,12 @@ object MatchingFlow {
             }
         }
 
+        @Suspendable
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data
 
             // Penalty awarded to un-matched listings
-            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2  else 2
+            val unitPenalty = if (listingState.listingType == ListingType.ProducerListing) -2 else 2
 
             // Create new listing for the retailer
             val retailerSignedTx = subFlow(

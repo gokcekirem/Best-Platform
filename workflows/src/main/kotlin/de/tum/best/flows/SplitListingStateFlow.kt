@@ -24,6 +24,10 @@ object SplitListingStateFlow {
             object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new IOU.")
             object VERIFYING_TRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNING_TRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
+            object GATHERING_SIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {
+                override fun childProgressTracker() = CollectSignaturesFlow.tracker()
+            }
+
             object FINALISING_TRANSACTION :
                 ProgressTracker.Step("Obtaining notary signature and recording transaction.") {
                 override fun childProgressTracker() = FinalityFlow.tracker()
@@ -33,6 +37,7 @@ object SplitListingStateFlow {
                 GENERATING_TRANSACTION,
                 VERIFYING_TRANSACTION,
                 SIGNING_TRANSACTION,
+                GATHERING_SIGS,
                 FINALISING_TRANSACTION
             )
         }
@@ -63,12 +68,23 @@ object SplitListingStateFlow {
             // Stage 3.
             progressTracker.currentStep = SIGNING_TRANSACTION
             // Sign the transaction.
-            val stx = serviceHub.signInitialTransaction(txBuilder)
+            val partSignedTx = serviceHub.signInitialTransaction(txBuilder)
 
             // Stage 4.
             progressTracker.currentStep = FINALISING_TRANSACTION
+            val senderSession = initiateFlow(listingStateAndRef.state.data.sender)
+            val fullySignedTx = subFlow(
+                CollectSignaturesFlow(
+                    partSignedTx,
+                    setOf(senderSession),
+                    GATHERING_SIGS.childProgressTracker()
+                )
+            )
+
+            // Stage 5.
+            progressTracker.currentStep = FINALISING_TRANSACTION
             // Notarise the transaction and record the state in the ledger.
-            return subFlow(FinalityFlow(stx, listOf(), FINALISING_TRANSACTION.childProgressTracker()))
+            return subFlow(FinalityFlow(fullySignedTx, setOf(senderSession), FINALISING_TRANSACTION.childProgressTracker()))
         }
 
     }
