@@ -11,7 +11,7 @@ import net.corda.core.transactions.LedgerTransaction
  * Listing Contract *
 
  *Job of the contract is to verify that the corresponding "state" is legal.
-*/
+ */
 class ListingContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
@@ -78,9 +78,11 @@ class ListingContract : Contract {
         }
     }
 
-    // Commands are used to determine the type of the listing.
-    // If it is "ConsumerListing" then the listing should be interpreted as "want to buy" (created by a consumer)
-    // If it is "producerListing" then the listing should be interpreted as "want to sell" (created by a producer)
+    /**
+     * Commands are used to determine the type of the listing.
+     *  If it is "ConsumerListing" then the listing should be interpreted as "want to buy" (created by a consumer)
+     *  If it is "producerListing" then the listing should be interpreted as "want to sell" (created by a producer)
+     */
     interface Commands : CommandData {
         class ConsumerListing : Commands
         class ProducerListing : Commands

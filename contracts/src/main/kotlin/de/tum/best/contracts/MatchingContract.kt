@@ -38,7 +38,7 @@ class MatchingContract : Contract {
             // have a state in addition to the matching state
             "Should have one output" using (tx.outputs.size == 1)
 
-            for(listingState in listingStates) {
+            for (listingState in listingStates) {
                 when (listingState.listingType) {
                     ListingType.ProducerListing -> {
                         "Listing Producer should be the matching producer" using (listingState.sender == matchingState.producer)
@@ -56,6 +56,9 @@ class MatchingContract : Contract {
         }
     }
 
+    /**
+     * Commands are used to determine the type of the listing
+     */
     interface Commands : CommandData {
         class Match : Commands
     }
