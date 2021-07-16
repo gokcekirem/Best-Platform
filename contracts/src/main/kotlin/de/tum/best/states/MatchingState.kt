@@ -10,12 +10,12 @@ import net.corda.core.identity.Party
 data class MatchingState(
     val unitPrice: Int,
     val unitAmount: Int,
-    val buyer: Party,
-    val seller: Party,
+    val consumer: Party,
+    val producer: Party,
     val matcher: Party,
-    val buyerDesiredPrice: Int,
-    val sellerDesiredPrice: Int,
+    val consumerDesiredPrice: Int,
+    val producerDesiredPrice: Int,
     val electricityType: ElectricityType,
     val marketClock: Int,
-    override val participants: List<AbstractParty> = listOf(buyer, seller, matcher)
+    override val participants: List<AbstractParty> = listOf(consumer, producer, matcher)
 ) : ContractState

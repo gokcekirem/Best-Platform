@@ -1,6 +1,5 @@
 package de.tum.best.integration
 
-import de.tum.best.flows.BroadcastTransactionFlow
 import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.ListingFlowInitiator
 import de.tum.best.flows.MatchingFlow
@@ -117,9 +116,9 @@ class MatchingTest {
         proxies.slice(0..2).forEach {
             val states = it.vaultQueryBy<MatchingState>().states
             val matchingState = states.single().state.data
-            assertEquals(nodeHandles[0].nodeInfo.singleIdentity(), matchingState.seller)
+            assertEquals(nodeHandles[0].nodeInfo.singleIdentity(), matchingState.producer)
             assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), matchingState.matcher)
-            assertEquals(nodeHandles[2].nodeInfo.singleIdentity(), matchingState.buyer)
+            assertEquals(nodeHandles[2].nodeInfo.singleIdentity(), matchingState.consumer)
             assertEquals(5, matchingState.unitPrice)
             assertEquals(3, matchingState.unitAmount)
         }
@@ -160,10 +159,10 @@ class MatchingTest {
         val (firstMatchingState, secondMatchingState) = states.first().state.data to states.last().state.data
 
         assertTrue(
-            (firstMatchingState.buyer == nodeHandles[1].nodeInfo.singleIdentity()
-                    && secondMatchingState.buyer == nodeHandles[2].nodeInfo.singleIdentity()) ||
-                    (firstMatchingState.buyer == nodeHandles[2].nodeInfo.singleIdentity()
-                    && secondMatchingState.buyer == nodeHandles[1].nodeInfo.singleIdentity())
+            (firstMatchingState.consumer == nodeHandles[1].nodeInfo.singleIdentity()
+                    && secondMatchingState.consumer == nodeHandles[2].nodeInfo.singleIdentity()) ||
+                    (firstMatchingState.consumer == nodeHandles[2].nodeInfo.singleIdentity()
+                    && secondMatchingState.consumer == nodeHandles[1].nodeInfo.singleIdentity())
         )
 
         assertTrue(
@@ -174,7 +173,7 @@ class MatchingTest {
         )
 
         setOf(firstMatchingState, secondMatchingState).forEach {
-            assertEquals(nodeHandles[0].nodeInfo.singleIdentity(), it.seller)
+            assertEquals(nodeHandles[0].nodeInfo.singleIdentity(), it.producer)
             assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), it.matcher)
             assertEquals(3, it.unitAmount)
         }

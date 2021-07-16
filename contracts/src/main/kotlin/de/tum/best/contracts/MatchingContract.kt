@@ -41,12 +41,12 @@ class MatchingContract : Contract {
             for(listingState in listingStates) {
                 when (listingState.listingType) {
                     ListingType.ProducerListing -> {
-                        "Seller should be the producer" using (listingState.sender == matchingState.seller)
-                        "Seller desired price should be its listing unit price" using (listingState.unitPrice == matchingState.sellerDesiredPrice)
+                        "Listing Producer should be the matching producer" using (listingState.sender == matchingState.producer)
+                        "Producer desired price should be its listing unit price" using (listingState.unitPrice == matchingState.producerDesiredPrice)
                     }
                     ListingType.ConsumerListing -> {
-                        "Buyer should be the consumer" using (listingState.sender == matchingState.buyer)
-                        "Buyer desired price should be its listing unit price" using (listingState.unitPrice == matchingState.buyerDesiredPrice)
+                        "Listing consumer should be the matching consumer" using (listingState.sender == matchingState.consumer)
+                        "Consumer desired price should be its listing unit price" using (listingState.unitPrice == matchingState.consumerDesiredPrice)
                     }
                 }
                 "Market clock should match up" using (listingState.marketClock == matchingState.marketClock)
