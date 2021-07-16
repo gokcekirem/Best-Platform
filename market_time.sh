@@ -16,4 +16,6 @@ elif [ "$1" == "reset" ]; then
     --data-raw '{
     "partyName": "O=PartyA,L=London,C=GB"
     }'
+elif [ "$1" == "match" ]; then
+  curl --location --request POST 'localhost:50006/match'
 fi
