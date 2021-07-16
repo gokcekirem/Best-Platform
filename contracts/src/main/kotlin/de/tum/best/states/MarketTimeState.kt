@@ -15,6 +15,10 @@ import net.corda.core.identity.Party
  * functionality is implemented in the corresponding flow and the contract.
  * No need to add more parameters due to increasing complexity.
  *
+ * The [marketClock] constantly grows with each market iteration.
+ * The [marketTime] repeats the different phases of the market in a cycle.
+ * More detail is provided in the report.
+ *
  * @property marketClock current market clock
  * @property marketTime current market time
  * @property sender the sender of this state
