@@ -247,4 +247,43 @@ class MatchingTests {
         })
     }
 
+    @Test
+    fun matchWithNoConsumers() = withDriver {
+        val (nodeHandles, proxies) = startNodes()
+        initiateMarket(proxies, nodeHandles)
+
+        proxies[0].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            5,
+            9,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ProducerListing
+        ).returnValue.getOrThrow()
+
+        assertEquals(5, proxies[0].vaultQueryBy<ListingState>().states.first().state.data.unitPrice)
+
+        proxies[2].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            7,
+            2,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ProducerListing
+        ).returnValue.getOrThrow()
+
+        assertEquals(7, proxies[1].vaultQueryBy<ListingState>().states.last().state.data.unitPrice)
+
+        proxies[1].startTrackedFlow(
+            MatchingFlow::Initiator
+        ).returnValue.getOrThrow()
+
+        val matchingStates = proxies[1].vaultQueryBy<MatchingState>().states.map { it.state.data }
+
+        matchingStates.forEach {
+            assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), it.matcher)
+            assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), it.consumer)
+        }
+    }
+
 }
