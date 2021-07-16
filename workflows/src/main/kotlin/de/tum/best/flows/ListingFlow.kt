@@ -91,7 +91,7 @@ class ListingFlowInitiator(
             QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
         ).states.single().state.data
 
-        val marketClock = marketClockQuery.marketTime
+        val marketClock = marketClockQuery.marketClock
 
         progressTracker.currentStep = STEP_TYPE
 
@@ -166,10 +166,9 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
     fun clockSyncVerifier(stx: SignedTransaction): Boolean {
 
         //Get current time info from nodes vault
-        // TODO Shouldn't this be marketClock?
         val timeQuery = serviceHub.vaultService.queryBy<MarketTimeState>(
             QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
-        ).states.single().state.data.marketTime
+        ).states.single().state.data.marketClock
 
         //Get listing object from the signed transaction
         return stx.tx.outputsOfType<ListingState>()

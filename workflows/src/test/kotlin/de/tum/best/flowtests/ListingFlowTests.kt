@@ -83,7 +83,7 @@ class ListingFlowTests {
                 assertEquals(3, listingState.amount)
                 assertEquals(a.info.singleIdentity(), listingState.sender)
                 assertEquals(b.info.singleIdentity(), listingState.matcher)
-                assertEquals(1, listingState.marketClock)
+                assertEquals(0, listingState.marketClock)
             }
         }
     }
