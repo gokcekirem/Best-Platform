@@ -162,7 +162,7 @@ class MatchingTest {
             (firstMatchingState.consumer == nodeHandles[1].nodeInfo.singleIdentity()
                     && secondMatchingState.consumer == nodeHandles[2].nodeInfo.singleIdentity()) ||
                     (firstMatchingState.consumer == nodeHandles[2].nodeInfo.singleIdentity()
-                    && secondMatchingState.consumer == nodeHandles[1].nodeInfo.singleIdentity())
+                            && secondMatchingState.consumer == nodeHandles[1].nodeInfo.singleIdentity())
         )
 
         assertTrue(
@@ -177,6 +177,74 @@ class MatchingTest {
             assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), it.matcher)
             assertEquals(3, it.unitAmount)
         }
+    }
+
+    @Test
+    fun matchesSuccessfullyWithThreeListings() = withDriver {
+        val (nodeHandles, proxies) = startNodes()
+        initiateMarket(proxies, nodeHandles)
+
+        proxies[0].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            5,
+            9,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ProducerListing
+        ).returnValue.getOrThrow()
+
+        assertEquals(5, proxies[0].vaultQueryBy<ListingState>().states.first().state.data.unitPrice)
+
+        proxies[2].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            7,
+            2,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ProducerListing
+        ).returnValue.getOrThrow()
+
+        assertEquals(7, proxies[1].vaultQueryBy<ListingState>().states.last().state.data.unitPrice)
+
+        proxies[3].startTrackedFlow(
+            ::ListingFlowInitiator,
+            ElectricityType.Renewable,
+            8,
+            10,
+            nodeHandles[1].nodeInfo.singleIdentity(),
+            ListingType.ConsumerListing
+        ).returnValue.getOrThrow()
+
+        proxies[1].startTrackedFlow(
+            MatchingFlow::Initiator
+        ).returnValue.getOrThrow()
+
+        val matchingStates = proxies[1].vaultQueryBy<MatchingState>().states.map { it.state.data }
+
+        matchingStates.forEach {
+            assertEquals(nodeHandles[1].nodeInfo.singleIdentity(), it.matcher)
+        }
+
+        assertTrue(matchingStates.any {
+            it.producer == nodeHandles[2].nodeInfo.singleIdentity() &&
+                    it.consumer == nodeHandles[3].nodeInfo.singleIdentity() &&
+                    it.unitAmount == 1 &&
+                    it.unitPrice == 7
+        })
+
+        assertTrue(matchingStates.any {
+            it.producer == nodeHandles[0].nodeInfo.singleIdentity() &&
+                    it.consumer == nodeHandles[3].nodeInfo.singleIdentity() &&
+                    it.unitAmount == 9 &&
+                    it.unitPrice == 7
+        })
+
+        assertTrue(matchingStates.any {
+            it.producer == nodeHandles[2].nodeInfo.singleIdentity() &&
+                    it.consumer == nodeHandles[1].nodeInfo.singleIdentity() &&
+                    it.unitAmount == 1 &&
+                    it.unitPrice == 5
+        })
     }
 
 }
