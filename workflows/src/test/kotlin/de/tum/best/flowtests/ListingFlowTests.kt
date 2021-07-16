@@ -1,9 +1,11 @@
 package de.tum.best.flowtests
 
+import de.tum.best.flows.BroadcastTransactionFlow
 import de.tum.best.flows.InitiateMarketTimeFlow
 import de.tum.best.flows.ListingFlowInitiator
-import de.tum.best.flows.RecordTransactionAsObserverFlow
-import de.tum.best.states.*
+import de.tum.best.states.ElectricityType
+import de.tum.best.states.ListingState
+import de.tum.best.states.ListingType
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.node.services.queryBy
 import net.corda.core.utilities.getOrThrow
@@ -41,7 +43,7 @@ class ListingFlowTests {
 
         startedNodes.forEach {
             it.registerInitiatedFlow(InitiateMarketTimeFlow.Responder::class.java)
-            it.registerInitiatedFlow(RecordTransactionAsObserverFlow::class.java)
+            it.registerInitiatedFlow(BroadcastTransactionFlow.Responder::class.java)
         }
         network.runNetwork()
     }

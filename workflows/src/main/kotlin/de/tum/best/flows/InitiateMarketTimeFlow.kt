@@ -144,7 +144,7 @@ object InitiateMarketTimeFlow {
             )
 
             progressTracker.currentStep = BROADCAST_TX
-            subFlow(BroadcastTransactionFlow(signedTransaction))
+            subFlow(BroadcastTransactionFlow.Initiator(signedTransaction))
 
             return signedTransaction
         }
