@@ -80,7 +80,6 @@ object MatchingFlow {
 
                 val sortedProducersByReference = producersByPreference.sortedBy { it.state.data.unitPrice }
 
-                // TODO What happens if only one of these lists is empty?
                 if (producersByPreference.any() && consumersByPreference.any()) {
                     val sortedProducerStates = sortedProducersByReference.map { it.state.data }
                     val consumerStates = consumersByPreference.map { it.state.data }
