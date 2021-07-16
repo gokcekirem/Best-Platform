@@ -26,7 +26,6 @@ object MatchingFlow {
     class Initiator : FlowLogic<Collection<SignedTransaction>>() {
 
         companion object {
-            // TODO Update Progress Descriptions
             object SEARCHING_STATES : ProgressTracker.Step("Looking up un-consumed listing states from the vault.")
             object CALCULATING_UNIT_PRICE : ProgressTracker.Step("Calculating merit order unit price.")
             object GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW :
@@ -34,7 +33,7 @@ object MatchingFlow {
                 override fun childProgressTracker() = SplitListingStateFlow.Initiator.tracker()
             }
 
-            object EXECUTING_SINGLE_MATCHING_FLOWS : ProgressTracker.Step("Gathering the counterparty's signature.") {
+            object EXECUTING_SINGLE_MATCHING_FLOWS : ProgressTracker.Step("Executing single matching flows.") {
                 override fun childProgressTracker() = SingleMatchingFlow.Initiator.tracker()
             }
 
@@ -53,7 +52,6 @@ object MatchingFlow {
         @Suspendable
         override fun call(): Collection<SignedTransaction> {
             progressTracker.currentStep = SEARCHING_STATES
-            // TODO Maybe check for the current market time, in case matching with retailer does not work
             val listingStateAndRefs = serviceHub.vaultService.queryBy<ListingState>(
                 QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
             )
@@ -95,7 +93,6 @@ object MatchingFlow {
                         val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
                         participatingProducerStates.last().unitPrice
                     }
-                    //TODO progressTracker within loops?
                     progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
 
                     // Creates matches from client listings and adds them to the global matchings hashset
@@ -239,7 +236,7 @@ object MatchingFlow {
             // Create new listing for the retailer
             val retailerSignedTx = subFlow(
                 ListingFlowInitiator(
-                    listingState.electricityType, //TODO shouldn't retailers electricity type be set to either traditional or none(if consumer listing)?
+                    listingState.electricityType,
                     unitPrice + unitPenalty,
                     listingState.amount,
                     ourIdentity,

@@ -24,8 +24,9 @@ object SingleMatchingFlow {
     ) : FlowLogic<SignedTransaction>() {
 
         companion object {
-            // TODO Update Progress descriptions
-            object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new IOU.")
+            object GENERATING_TRANSACTION :
+                ProgressTracker.Step("Generating transaction based on the incoming states and data.")
+
             object VERIFYING_TRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNING_TRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
             object GATHERING_SIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {
@@ -48,7 +49,6 @@ object SingleMatchingFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            // TODO Make production ready
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
             // Stage 1.

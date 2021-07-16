@@ -20,8 +20,7 @@ object SplitListingStateFlow {
     ) : FlowLogic<SignedTransaction>() {
 
         companion object {
-            // TODO Update Progress descriptions
-            object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new IOU.")
+            object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on input Amounts.")
             object VERIFYING_TRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNING_TRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
             object GATHERING_SIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {

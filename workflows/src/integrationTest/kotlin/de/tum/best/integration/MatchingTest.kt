@@ -83,7 +83,7 @@ class MatchingTest {
     }
 
     @Test
-    fun `single producer and consumer listing are matched`() = withDriver {
+    fun singleProducerAndConsumerListingsAreMatched() = withDriver {
         val (nodeHandles, proxies) = startNodes()
         initiateMarket(proxies, nodeHandles)
 
@@ -125,7 +125,7 @@ class MatchingTest {
     }
 
     @Test
-    fun `producer listing must be split`() = withDriver {
+    fun producerListingMustBeSplit() = withDriver {
         val (nodeHandles, proxies) = startNodes()
         initiateMarket(proxies, nodeHandles)
 

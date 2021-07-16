@@ -1,6 +1,5 @@
 package de.tum.best.contracts
 
-import de.tum.best.states.ElectricityType
 import de.tum.best.states.ListingState
 import net.corda.core.contracts.CommandData
 import net.corda.core.contracts.Contract
@@ -55,7 +54,6 @@ class ListingContract : Contract {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
 
-//        val results = serviceHub.vaultService.queryBy<ContractState>(criteria)
         for (listing in listings) {
             // Requirements
             requireThat {
