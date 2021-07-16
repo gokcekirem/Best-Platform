@@ -57,6 +57,16 @@ Now the Spring Boot server for Party A is accessible via HTTP requests at ``loca
 After starting the backend component we want to start the frontend component. The instructions for running the frontend
 component are located in the frontend repository.
 
+## Orchestration service
+
+The orchestration service can be controlled via the `market_time.bat` script in the root directory of this project. You
+can execute the following calls.
+
+    market_time.bat initiate
+    market_time.bat clear
+    market_time.bat reset
+    market_time.bat match
+
 ## Interacting with the nodes
 
 ### Web Interface
