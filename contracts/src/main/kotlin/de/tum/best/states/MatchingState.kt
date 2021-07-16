@@ -13,5 +13,9 @@ data class MatchingState(
     val buyer: Party,
     val seller: Party,
     val matcher: Party,
+    val buyerDesiredPrice: Int,
+    val sellerDesiredPrice: Int,
+    val electricityType: ElectricityType,
+    val marketClock: Int,
     override val participants: List<AbstractParty> = listOf(buyer, seller, matcher)
 ) : ContractState
