@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class MatchingTest {
+class MatchingTests {
 
     private val identities = listOf(
         TestIdentity(CordaX500Name("PartyA", "", "GB")),
