@@ -10,6 +10,8 @@ import net.corda.core.transactions.SignedTransaction
 /**
  * Filters out any notary identities and removes our identity, then broadcasts the [SignedTransaction] to all the
  * remaining identities.
+ *
+ * @param stx the transaction to broadcast
  */
 @InitiatingFlow
 @StartableByRPC

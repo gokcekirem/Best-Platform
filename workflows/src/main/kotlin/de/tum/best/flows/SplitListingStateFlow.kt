@@ -10,8 +10,21 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
+/**
+ * Splits a listing in two different listings for further matching
+ *
+ * @see MatchingFlow
+ */
 object SplitListingStateFlow {
 
+    /**
+     * Initiates the [SplitListingStateFlow]
+     *
+     * @param listingStateAndRef the listing to split
+     * @param requiredAmount the amount that is required for one of the matchings to be created
+     * @param remainderAmount the amount left over from the original listing when splitting away the [requiredAmount]
+     * @param progressTracker the [ProgressTracker] to use in this subflow
+     */
     class Initiator(
         val listingStateAndRef: StateAndRef<ListingState>,
         val requiredAmount: Int,
@@ -83,7 +96,13 @@ object SplitListingStateFlow {
             // Stage 5.
             progressTracker.currentStep = FINALISING_TRANSACTION
             // Notarise the transaction and record the state in the ledger.
-            return subFlow(FinalityFlow(fullySignedTx, setOf(senderSession), FINALISING_TRANSACTION.childProgressTracker()))
+            return subFlow(
+                FinalityFlow(
+                    fullySignedTx,
+                    setOf(senderSession),
+                    FINALISING_TRANSACTION.childProgressTracker()
+                )
+            )
         }
 
     }

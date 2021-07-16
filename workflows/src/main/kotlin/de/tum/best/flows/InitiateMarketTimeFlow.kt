@@ -17,9 +17,16 @@ import net.corda.core.utilities.ProgressTracker
 
 /**
  * Accept ask and bids (t1) period initiator flow
+ *
+ * @see ClearMarketTimeFlow
+ * @see ResetMarketTimeFlow
  */
-
 object InitiateMarketTimeFlow {
+
+    /**
+     * Initiates the [InitiateMarketTimeFlow]
+     * @param otherParty the party to initially communicate the [MarketTimeState] to
+     */
     @InitiatingFlow
     @StartableByRPC
     class Initiator(val otherParty: Party) : FlowLogic<SignedTransaction>() { // Could also be private?
@@ -28,14 +35,17 @@ object InitiateMarketTimeFlow {
          * checkpoint is reached in the code. See the 'progressTracker.currentStep' expressions within the call() function.
          */
         companion object {
-            object GENERATINGTRANSACTION : ProgressTracker.Step("Generating transaction based on new MarketTime Initiation.")
+            object GENERATINGTRANSACTION :
+                ProgressTracker.Step("Generating transaction based on new MarketTime Initiation.")
+
             object VERIFYINGTRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNINGTRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
             object GATHERINGSIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {
                 override fun childProgressTracker() = CollectSignaturesFlow.tracker()
             }
 
-            object FINALISINGTRANSACTION : ProgressTracker.Step("Obtaining notary signature and recording transaction.") {
+            object FINALISINGTRANSACTION :
+                ProgressTracker.Step("Obtaining notary signature and recording transaction.") {
                 override fun childProgressTracker() = FinalityFlow.tracker()
             }
 
@@ -53,9 +63,6 @@ object InitiateMarketTimeFlow {
 
         override val progressTracker = tracker()
 
-        /**
-         * The flow logic is encapsulated within the call() method.
-         */
         @Suspendable
         override fun call(): SignedTransaction {
 
@@ -63,8 +70,7 @@ object InitiateMarketTimeFlow {
 
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
-            var outputState: MarketTimeState
-            var txBuilder: TransactionBuilder
+            val txBuilder: TransactionBuilder
 
             // Stage 1.
             progressTracker.currentStep = GENERATINGTRANSACTION
@@ -79,7 +85,7 @@ object InitiateMarketTimeFlow {
                 // true, if there exists an input StateandRef of type MarketTimeState
                 val inputStateAndRef = marketTimeStates.first()
                 val inputState = inputStateAndRef.state.data
-                outputState = MarketTimeState(
+                val outputState = MarketTimeState(
                     inputState.marketClock,
                     inputState.marketTime + 1,
                     serviceHub.myInfo.legalIdentities.first(),
@@ -93,7 +99,7 @@ object InitiateMarketTimeFlow {
                     .addCommand(txCommand)
             } else {
                 //If this is indeed the initiation of the Market, thus Markettime concept;
-                outputState = MarketTimeState(
+                val outputState = MarketTimeState(
                     0, 1, serviceHub.myInfo.legalIdentities.first(),
                     otherParty
                 )
@@ -104,7 +110,6 @@ object InitiateMarketTimeFlow {
                     .addOutputState(outputState, MarketTimeContract.ID)
                     .addCommand(txCommand)
             }
-
 
 
             // Stage 2.
@@ -121,9 +126,12 @@ object InitiateMarketTimeFlow {
             progressTracker.currentStep = GATHERINGSIGS
             // Send the state to the counterparty, and receive it back with their signature.
             val otherPartySession = initiateFlow(otherParty)
-            val fullySignedTx = subFlow(CollectSignaturesFlow(partSignedTx, setOf(otherPartySession),
-                GATHERINGSIGS.childProgressTracker()
-            ))
+            val fullySignedTx = subFlow(
+                CollectSignaturesFlow(
+                    partSignedTx, setOf(otherPartySession),
+                    GATHERINGSIGS.childProgressTracker()
+                )
+            )
 
             // Stage 5.
             progressTracker.currentStep = FINALISINGTRANSACTION
@@ -142,6 +150,11 @@ object InitiateMarketTimeFlow {
         }
     }
 
+    /**
+     * Responds to the [InitiateMarketTimeFlow]
+     *
+     * @param otherPartySession the session which is providing the transaction to sign
+     */
     @InitiatedBy(Initiator::class)
     class Responder(val otherPartySession: FlowSession) : FlowLogic<SignedTransaction>() {
         @Suspendable
@@ -155,12 +168,12 @@ object InitiateMarketTimeFlow {
 
                     if (stx.inputs.any()) {
                         val ourStateRef = stx.inputs.single()
-                        val ourStateAndRef: StateAndRef<MarketTimeState> = serviceHub.toStateAndRef<MarketTimeState>(ourStateRef)
+                        val ourStateAndRef: StateAndRef<MarketTimeState> =
+                            serviceHub.toStateAndRef<MarketTimeState>(ourStateRef)
                         val inputState = ourStateAndRef.state.data
 
                         "MarketTime value in the previous (Input) state must be equal to 0." using (inputState.marketTime == 0)
-                    }
-                    else {
+                    } else {
                         "marketClock in the output state after market initiation should be 0, if there is no input state " using (output.marketClock == 0)
                     }
                 }

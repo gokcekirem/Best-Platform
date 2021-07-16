@@ -12,6 +12,11 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 
+/**
+ * Handles the matching system and thus the creation of matchings in the system.
+ * @see MatchingFlow
+ * @see SplitListingStateFlow
+ */
 object MatchingFlow {
 
     data class Matching(
@@ -21,6 +26,9 @@ object MatchingFlow {
         val consumerStateAndRef: StateAndRef<ListingState>
     )
 
+    /**
+     * Initiates the [MatchingFlow]
+     */
     @InitiatingFlow
     @StartableByRPC
     class Initiator : FlowLogic<Collection<SignedTransaction>>() {
@@ -123,6 +131,13 @@ object MatchingFlow {
             }
         }
 
+        /**
+         * Matches the provided listings
+         *
+         * @param unitPrice the unit price to use for matchings
+         * @param producerStates the producer listings to match
+         * @param consumerStates the consumer listings to match
+         */
         @Suspendable
         private fun matchListings(
             unitPrice: Int,
@@ -166,6 +181,16 @@ object MatchingFlow {
             }
         }
 
+        /**
+         * Matches a producer and consumer listing that have a differing unit amount
+         *
+         * @param producerStateIterator the iterator to add a newly split producer listing
+         * @param consumerStateIterator the iterator to add a newly split consumer listing
+         * @param progressTracker the [ProgressTracker] of the corresponding flow
+         * @param unitPrice the price to use for matching
+         * @param producerListing the producer listing to match
+         * @param consumerListing the consumer listing to match
+         */
         @Suspendable
         private fun matchWithDifferentAmount(
             producerStateIterator: MutableListIterator<StateAndRef<ListingState>>,
@@ -226,6 +251,12 @@ object MatchingFlow {
             }
         }
 
+        /**
+         * Matches a producer or consumer listing with the retailer
+         *
+         * @param listingStateAndRef the listing to match
+         * @param the price to use for matching
+         */
         @Suspendable
         private fun matchWithRetailer(listingStateAndRef: StateAndRef<ListingState>, unitPrice: Int) {
             val listingState = listingStateAndRef.state.data

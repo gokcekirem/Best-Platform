@@ -13,8 +13,20 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
+/**
+ * Creates a transaction for the matching of a single producer and consumer listing
+ * @see MatchingFlow
+ */
 object SingleMatchingFlow {
 
+    /**
+     * Initiates the [SingleMatchingFlow]
+     *
+     * @param producerStateAndRef the producer listing to match
+     * @param consumerStateAndRef the consumer listing to match
+     * @param unitPrice the price of the matching
+     * @param unitAmount the maount of the matching
+     */
     class Initiator(
         val producerStateAndRef: StateAndRef<ListingState>,
         val consumerStateAndRef: StateAndRef<ListingState>,
@@ -114,6 +126,11 @@ object SingleMatchingFlow {
 
     }
 
+    /**
+     * Responds to the [SingleMatchingFlow]
+     *
+     * @param otherPartySession the session which is providing the transaction to sign
+     */
     @InitiatedBy(MatchingFlow.Initiator::class)
     class Acceptor(val otherPartySession: FlowSession) : FlowLogic<SignedTransaction>() {
 

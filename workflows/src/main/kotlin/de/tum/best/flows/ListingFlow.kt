@@ -133,12 +133,14 @@ class ListingFlowInitiator(
 
         // 6.Step: Assuming no exceptions, we can now finalise the transaction
         progressTracker.currentStep = STEP_FINALIZE
-        return subFlow<SignedTransaction>(FinalityFlow(signedListingTx, sessions))
+        return subFlow(FinalityFlow(signedListingTx, sessions))
     }
 }
 
 /**
  * ListingFlowResponder responder is used in order to respond to the listing creation process
+ *
+ * @param counterpartySession the session which is providing the transaction to sign
  */
 @InitiatedBy(ListingFlowInitiator::class)
 class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
