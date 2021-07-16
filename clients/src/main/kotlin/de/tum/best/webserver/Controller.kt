@@ -65,6 +65,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Get mapping at `/listings` that returns all unconsumed listings the node knows of. 
      */
+    @CrossOrigin
     @GetMapping(value = ["listings"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getListings(): ResponseEntity<List<StateAndRef<ListingState>>> {
         return tryFunctionAndRethrowError { ResponseEntity.ok(proxy.vaultQueryBy<ListingState>().states) }
@@ -75,6 +76,7 @@ class Controller(rpc: NodeRPCConnection) {
      *
      * In the case of a regular node this would be all the matchings, the node was part of.
      */
+    @CrossOrigin
     @GetMapping(value = ["matchings"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMatchings(): ResponseEntity<List<StateAndRef<MatchingState>>> {
         return tryFunctionAndRethrowError { ResponseEntity.ok(proxy.vaultQueryBy<MatchingState>().states) }
@@ -83,6 +85,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Get mapping at `/name` that returns the organization name of the node.
      */
+    @CrossOrigin
     @GetMapping(value = ["name"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getName(): ResponseEntity<Map<String, String>> {
         return tryFunctionAndRethrowError {
@@ -93,6 +96,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Get mapping at `/market-time` that returns the current market time the node knows of.
      */
+    @CrossOrigin
     @GetMapping(value = ["market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getMarketTime(): ResponseEntity<StateAndRef<MarketTimeState>> {
         val nullableMarketTimeState = proxy.vaultQueryBy<MarketTimeState>().states.singleOrNull()
@@ -112,6 +116,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Post mapping at `/clear-market-time` that clears the market time.
      */
+    @CrossOrigin
     @PostMapping(value = ["clear-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun clearMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.CLEAR_FLOW)
@@ -120,6 +125,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Post mapping at `/initiate-market-time` that initiates the market time.
      */
+    @CrossOrigin
     @PostMapping(value = ["initiate-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun initiateMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.INITIATE_FLOW)
@@ -128,6 +134,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Post mapping at `/reset-market-time` that resets the market time.
      */
+    @CrossOrigin
     @PostMapping(value = ["reset-market-time"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun resetMarketTime(@RequestBody marketTimeForm: Forms.MarketTimeForm): ResponseEntity<SignedTransaction> {
         return startMarketTimeFlow(marketTimeForm, MarketTimeFlow.RESET_FLOW)
@@ -172,6 +179,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Post mapping at `/match` that initiates the matching procedure.
      */
+    @CrossOrigin
     @PostMapping(value = ["match"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun initiateMatching(): ResponseEntity<Collection<SignedTransaction>> {
         return try {
@@ -186,6 +194,7 @@ class Controller(rpc: NodeRPCConnection) {
     /**
      * Post mapping at `/create-listing` that creates a listing.
      */
+    @CrossOrigin
     @PostMapping(value = ["create-listing"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun createListing(@RequestBody listingForm: Forms.ListingForm): ResponseEntity<SignedTransaction> {
         val matcherName = listingForm.matcherName
