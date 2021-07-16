@@ -2,7 +2,6 @@ package de.tum.best.flowtests
 
 import de.tum.best.flows.BroadcastTransactionFlow
 import de.tum.best.flows.InitiateMarketTimeFlow
-import de.tum.best.flows.RecordTransactionAsObserverFlow
 import de.tum.best.states.MarketTimeState
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.vault.QueryCriteria
@@ -53,7 +52,7 @@ class BroadcastTxFlowTests {
         // For real nodes this happens automatically, but we have to manually register the flow for tests.
 
         startedNodes.forEach { it.registerInitiatedFlow(InitiateMarketTimeFlow.Responder::class.java) }
-        startedNodes.forEach{it.registerInitiatedFlow(RecordTransactionAsObserverFlow::class.java)}
+        startedNodes.forEach{it.registerInitiatedFlow(BroadcastTransactionFlow.Responder::class.java)}
         network.runNetwork()
     }
 
@@ -71,7 +70,7 @@ class BroadcastTxFlowTests {
         val future = a.startFlow(flow)
         network.runNetwork()
         val signedTx = future.getOrThrow()
-        val broadcast = BroadcastTransactionFlow(signedTx)
+        val broadcast = BroadcastTransactionFlow.Initiator(signedTx)
         a.startFlow(broadcast)
         network.runNetwork()
 

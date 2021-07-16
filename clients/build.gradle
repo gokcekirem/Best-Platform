@@ -29,38 +29,22 @@ springBoot {
     mainClassName = "de.tum.best.webserver.ServerKt"
 }
 
-/* The Client is the communication channel between the external and the node. This task will help you immediately
- * execute your rpc methods in the main method of the client.kt. You can somewhat see this as a quick test of making
- * RPC calls to your nodes.
- */
-task runTemplateClient(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'de.tum.best.ClientKt'
-    args 'localhost:10006', 'user1', 'test'
-}
-
 /* This task will start the springboot server that connects to your node (via RPC connection). All of the http requests
  * are in the Controller file. You can leave the Server.kt and NodeRPCConnection.kt file untouched for your use.
  */
-task runTemplateServer(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'de.tum.best.webserver.ServerKt'
-    args '--server.port=10050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
-}
-
 task runPartyAServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50005', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
-task runPartyBServer(type: JavaExec, dependsOn: assemble) {
+task runMatchingNodeServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50006', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
-task runPartyCServer(type: JavaExec, dependsOn: assemble) {
+task runPartyBServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'de.tum.best.webserver.ServerKt'
     args '--server.port=50007', '--config.rpc.host=localhost', '--config.rpc.port=10012', '--config.rpc.username=user1', '--config.rpc.password=test'

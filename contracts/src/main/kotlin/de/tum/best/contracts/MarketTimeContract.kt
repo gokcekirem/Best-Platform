@@ -7,6 +7,9 @@ import net.corda.core.contracts.requireSingleCommand
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.contracts.requireThat
 
+/**
+ * Sanity checks a transaction involving a [de.tum.best.states.MatchingState]
+ */
 class MarketTimeContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
@@ -22,11 +25,11 @@ class MarketTimeContract : Contract {
         val outputs = tx.outputsOfType<MarketTimeState>()
         val inputs = tx.inputsOfType<MarketTimeState>()
 
-        requireThat{
+        requireThat {
 
-            "There should only be a single input state or none, if initiated for the first time" using(inputs.size <= 1)
+            "There should only be a single input state or none, if initiated for the first time" using (inputs.size <= 1)
 
-            "There should only be a single output state" using(outputs.size == 1)
+            "There should only be a single output state" using (outputs.size == 1)
         }
         // Step 3: Based on type of the command do verifications
 
@@ -39,32 +42,50 @@ class MarketTimeContract : Contract {
         }
 
     }
-    // Helper function in order to verify Market Time
+
+    /**
+     * Helper function in order to verify Market Time
+     */
     private fun verifyMarketTime(marketTimes: List<MarketTimeState>) {
         // Go through all listings and verify them. In practice there should only be one listing but
         // in case somebody tries to create modified transactions the system should be able to handle all of them
-        for(marketTime in marketTimes) {
+        for (marketTime in marketTimes) {
             requireThat {
-                "marketTime value must be greater than or equal to 0" using(marketTime.marketTime >= 0)
+                "marketTime value must be greater than or equal to 0" using (marketTime.marketTime >= 0)
 
-                "marketTime value must be lower than 3." using(marketTime.marketTime <3)
+                "marketTime value must be lower than 3." using (marketTime.marketTime < 3)
 
-                "marketClock value must be non-negative" using(marketTime.marketClock >= 0)
+                "marketClock value must be non-negative" using (marketTime.marketClock >= 0)
             }
         }
     }
 
-    /*
-    Commands are used to determine the type of the listing.
-    InitiateMarketTime: initialization after the creation of Market Time object, sets market time 0 to 1
-    ClearMarketTime: clearing the marketing time, sets market time 1 to 2
-    ResetMarketTime: reset the marketing time, sets market time 2 to 0
-    GetMarketTime: get the market time state
-    */
+    /**
+     * Commands are used to determine the type of the listing.
+     * @see InitiateMarketTime
+     * @see ClearMarketTime
+     * @see ResetMarketTime
+     * @see GetMarketTime
+     */
     interface Commands : CommandData {
+        /**
+         * Initialization after the creation of Market Time object, sets market time 0 to 1
+         */
         class InitiateMarketTime : Commands
+
+        /**
+         * Clearing the marketing time, sets market time 1 to 2
+         */
         class ClearMarketTime : Commands
+
+        /**
+         * Reset the marketing time, sets market time 2 to 0
+         */
         class ResetMarketTime : Commands
+
+        /**
+         * Get the market time state
+         */
         class GetMarketTime : Commands
     }
 }

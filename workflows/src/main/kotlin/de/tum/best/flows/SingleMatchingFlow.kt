@@ -13,8 +13,20 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 
+/**
+ * Creates a transaction for the matching of a single producer and consumer listing
+ * @see MatchingFlow
+ */
 object SingleMatchingFlow {
 
+    /**
+     * Initiates the [SingleMatchingFlow]
+     *
+     * @param producerStateAndRef the producer listing to match
+     * @param consumerStateAndRef the consumer listing to match
+     * @param unitPrice the price of the matching
+     * @param unitAmount the maount of the matching
+     */
     class Initiator(
         val producerStateAndRef: StateAndRef<ListingState>,
         val consumerStateAndRef: StateAndRef<ListingState>,
@@ -24,8 +36,9 @@ object SingleMatchingFlow {
     ) : FlowLogic<SignedTransaction>() {
 
         companion object {
-            // TODO Update Progress descriptions
-            object GENERATING_TRANSACTION : ProgressTracker.Step("Generating transaction based on new IOU.")
+            object GENERATING_TRANSACTION :
+                ProgressTracker.Step("Generating transaction based on the incoming states and data.")
+
             object VERIFYING_TRANSACTION : ProgressTracker.Step("Verifying contract constraints.")
             object SIGNING_TRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
             object GATHERING_SIGS : ProgressTracker.Step("Gathering the counterparty's signature.") {
@@ -48,20 +61,23 @@ object SingleMatchingFlow {
 
         @Suspendable
         override fun call(): SignedTransaction {
-            // TODO Make production ready
             val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
             // Stage 1.
             progressTracker.currentStep = GENERATING_TRANSACTION
             // Generate an unsigned transaction.
-            val consumer = consumerStateAndRef.state.data.sender
-            val producer = producerStateAndRef.state.data.sender
+            val consumer = consumerStateAndRef.state.data
+            val producer = producerStateAndRef.state.data
             val matcher = serviceHub.myInfo.legalIdentities.first()
             val matchingState = MatchingState(
                 unitPrice, unitAmount,
-                consumer,
-                producer,
-                matcher
+                consumer.sender,
+                producer.sender,
+                matcher,
+                consumer.unitPrice,
+                producer.unitPrice,
+                consumer.electricityType,
+                consumer.marketClock
             )
             val matchingCommand =
                 Command(MatchingContract.Commands.Match(), matchingState.participants.map { it.owningKey })
@@ -86,7 +102,7 @@ object SingleMatchingFlow {
 
             // Stage 4.
             progressTracker.currentStep = GATHERING_SIGS
-            val sessions = (setOf(consumer, producer) - matcher).map { initiateFlow(it) }
+            val sessions = (setOf(consumer.sender, producer.sender) - matcher).map { initiateFlow(it) }
             // Send the state to the counterparty, and receive it back with their signature.
             val fullySignedTx = subFlow(
                 CollectSignaturesFlow(
@@ -110,6 +126,11 @@ object SingleMatchingFlow {
 
     }
 
+    /**
+     * Responds to the [SingleMatchingFlow]
+     *
+     * @param otherPartySession the session which is providing the transaction to sign
+     */
     @InitiatedBy(MatchingFlow.Initiator::class)
     class Acceptor(val otherPartySession: FlowSession) : FlowLogic<SignedTransaction>() {
 

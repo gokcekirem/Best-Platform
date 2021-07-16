@@ -81,20 +81,17 @@ class ListingFlowInitiator(
 
         // 2.Step: Get a reference to the notary service on our network and our key pair.
         // Note: ongoing work to support multiple notary identities is still in progress.
-        // TODO : Look for a more elegant way
         progressTracker.currentStep = STEP_NOTARY
-        val notary = serviceHub.networkMapCache.notaryIdentities[0]
+        val notary = serviceHub.networkMapCache.notaryIdentities.single()
 
         // 3. Step: Conversion to ListingType enum and listing creation & market clock fetch
         progressTracker.currentStep = STEP_CLOCK
 
-        //TODO: We need a flow to fetch current market time, that flow will be called here
-        //TODO: Insert the subflow for matching here
         val marketClockQuery = serviceHub.vaultService.queryBy<MarketTimeState>(
             QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
         ).states.single().state.data
 
-        val marketClock = marketClockQuery.marketTime
+        val marketClock = marketClockQuery.marketClock
 
         progressTracker.currentStep = STEP_TYPE
 
@@ -136,12 +133,14 @@ class ListingFlowInitiator(
 
         // 6.Step: Assuming no exceptions, we can now finalise the transaction
         progressTracker.currentStep = STEP_FINALIZE
-        return subFlow<SignedTransaction>(FinalityFlow(signedListingTx, sessions))
+        return subFlow(FinalityFlow(signedListingTx, sessions))
     }
 }
 
 /**
  * ListingFlowResponder responder is used in order to respond to the listing creation process
+ *
+ * @param counterpartySession the session which is providing the transaction to sign
  */
 @InitiatedBy(ListingFlowInitiator::class)
 class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
@@ -149,7 +148,6 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
     override fun call(): SignedTransaction {
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
             override fun checkTransaction(stx: SignedTransaction) = requireThat {
-                //TODO: Also can we just call contract to do sanity check or do we need to verify each field again
                 val ourName = ourIdentity.name.toString()
                 "This node with name $ourName is not authorized to perform matching."
                     .using(
@@ -170,7 +168,7 @@ class ListingFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Sig
         //Get current time info from nodes vault
         val timeQuery = serviceHub.vaultService.queryBy<MarketTimeState>(
             QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
-        ).states.single().state.data.marketTime
+        ).states.single().state.data.marketClock
 
         //Get listing object from the signed transaction
         return stx.tx.outputsOfType<ListingState>()
