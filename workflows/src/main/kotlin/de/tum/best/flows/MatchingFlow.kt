@@ -96,9 +96,10 @@ object MatchingFlow {
                             ?: throw IllegalArgumentException("The producer state list should not be empty")
                     } else {
                         val cumulatedAmounts = sortedProducerStates.fold(listOf<Int>())
-                        { list, state -> list.plus(list.lastOrNull() ?: 0 + state.amount) }
-                        val insertionPoint = -(cumulatedAmounts.binarySearch(consumerEnergySum) + 1)
-                        val participatingProducerStates = sortedProducerStates.subList(0, insertionPoint + 1).toList()
+                        { list, state -> list.plus((list.lastOrNull() ?: 0) + state.amount) }
+                        val insertionPoint = cumulatedAmounts.binarySearch(consumerEnergySum)
+                        val actualInsertionPoint = if (insertionPoint >= 0) insertionPoint else -(insertionPoint + 1)
+                        val participatingProducerStates = sortedProducerStates.subList(0, actualInsertionPoint + 1).toList()
                         participatingProducerStates.last().unitPrice
                     }
                     progressTracker.currentStep = GENERATING_MATCHINGS_INLCUDING_SPLITTING_SUBFLOW
