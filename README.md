@@ -54,11 +54,14 @@ the following command.
 
 Now the Spring Boot server for Party A is accessible via HTTP requests at ``localhost:50005``.
 
-After starting the backend component we want to start the frontend component.
-
-[comment]: <> (TODO How do we start the frontend component)
+After starting the backend component we want to start the frontend component. The instructions for running the frontend
+component are located in the frontend repository.
 
 ## Interacting with the nodes
+
+### Web Interface
+
+The primary access to the nodes is via the web interface. How to access that is explained in the frontend repository.
 
 ### Shell
 
@@ -98,6 +101,3 @@ other nodes on the network:
 
 You can find out more about the node shell [here](https://docs.corda.net/shell.html).
 
-### Web Interface
-
-[comment]: <> (TODO How dow we access the web interface)
